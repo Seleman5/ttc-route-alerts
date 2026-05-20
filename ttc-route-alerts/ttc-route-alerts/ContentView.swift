@@ -7,15 +7,24 @@
 
 import SwiftUI
 
-struct TTCAlertRoute: Identifiable {
-    let id = UUID()
+struct TTCAlertRoute: Identifiable, Codable {
+    let id: UUID
     let name: String
     let status: String
+
+    init(id: UUID = UUID(), name: String, status: String) {
+        self.id = id
+        self.name = name
+        self.status = status
+    }
 }
 
 struct ContentView: View {
     @State private var routeInput = ""
-    @State private var savedRoutes: [TTCAlertRoute] = [
+    @State private var savedRoutes = ContentView.loadRoutes()
+
+    static let savedRoutesKey = "savedRoutes"
+    static let starterRoutes = [
         TTCAlertRoute(name: "Line 1", status: "No major issues"),
         TTCAlertRoute(name: "32 Eglinton West", status: "Delay reported")
     ]
@@ -116,7 +125,29 @@ struct ContentView: View {
         )
 
         savedRoutes.append(newRoute)
+        saveRoutes()
         routeInput = ""
+    }
+
+    static func loadRoutes() -> [TTCAlertRoute] {
+        guard let savedData = UserDefaults.standard.data(forKey: savedRoutesKey) else {
+            return starterRoutes
+        }
+
+        do {
+            return try JSONDecoder().decode([TTCAlertRoute].self, from: savedData)
+        } catch {
+            return starterRoutes
+        }
+    }
+
+    func saveRoutes() {
+        do {
+            let encodedRoutes = try JSONEncoder().encode(savedRoutes)
+            UserDefaults.standard.set(encodedRoutes, forKey: ContentView.savedRoutesKey)
+        } catch {
+            print("Could not save routes")
+        }
     }
 }
 
