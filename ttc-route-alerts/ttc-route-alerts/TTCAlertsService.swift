@@ -11,7 +11,7 @@ import SwiftProtobuf
 struct TTCAlertsService {
     let alertsFeedURL = URL(string: "https://bustime.ttc.ca/gtfsrt/alerts")!
 
-    func fetchAlertsFeed() async {
+    func fetchAlertsFeed() async -> [String] {
         do {
             let (data, response) = try await URLSession.shared.data(from: alertsFeedURL)
 
@@ -22,13 +22,14 @@ struct TTCAlertsService {
             }
 
             print("TTC alerts feed data size: \(data.count) bytes")
-            printDecodedAlerts(from: data)
+            return decodedAlerts(from: data)
         } catch {
             print("Could not fetch TTC alerts feed: \(error.localizedDescription)")
+            return []
         }
     }
 
-    func printDecodedAlerts(from data: Data) {
+    func decodedAlerts(from data: Data) -> [String] {
         do {
             let feed = try TransitRealtime_FeedMessage(serializedBytes: data)
             let alertTexts = readableAlertTexts(from: feed)
@@ -42,8 +43,11 @@ struct TTCAlertsService {
                     print("TTC alert: \(alertText)")
                 }
             }
+
+            return alertTexts
         } catch {
             print("Could not decode TTC alerts feed: \(error.localizedDescription)")
+            return []
         }
     }
 

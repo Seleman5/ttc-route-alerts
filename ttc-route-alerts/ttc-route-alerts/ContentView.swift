@@ -22,6 +22,7 @@ struct TTCAlertRoute: Identifiable, Codable {
 struct ContentView: View {
     @State private var routeInput = ""
     @State private var savedRoutes = ContentView.loadRoutes()
+    @State private var ttcAlerts: [String] = []
 
     static let savedRoutesKey = "savedRoutes"
     static let starterRoutes = [
@@ -51,7 +52,7 @@ struct ContentView: View {
         }
         .tint(ttcRed)
         .task {
-            await TTCAlertsService().fetchAlertsFeed()
+            ttcAlerts = await TTCAlertsService().fetchAlertsFeed()
         }
     }
 
@@ -110,7 +111,7 @@ struct ContentView: View {
             List {
                 ForEach(savedRoutes) { route in
                     NavigationLink {
-                        RouteDetailView(route: route, ttcRed: ttcRed, appBackground: appBackground)
+                        RouteDetailView(route: route, alerts: ttcAlerts, ttcRed: ttcRed, appBackground: appBackground)
                     } label: {
                         RouteCard(route: route, ttcRed: ttcRed)
                     }
@@ -221,6 +222,7 @@ struct RouteCard: View {
 
 struct RouteDetailView: View {
     let route: TTCAlertRoute
+    let alerts: [String]
     let ttcRed: Color
     let appBackground: Color
 
@@ -283,13 +285,21 @@ struct RouteDetailView: View {
     }
 
     var alertsSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             Text("TTC Alerts")
                 .font(.headline)
 
-            Text("Live TTC alerts will appear here in a future update.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+            if alerts.isEmpty {
+                Text("No TTC alerts found right now.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(alerts, id: \.self) { alert in
+                    Text(alert)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
