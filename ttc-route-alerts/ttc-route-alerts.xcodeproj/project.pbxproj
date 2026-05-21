@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		96798A002FBEF100002B92DB /* SwiftProtobuf in Frameworks */ = {isa = PBXBuildFile; productRef = 96798A012FBEF100002B92DB /* SwiftProtobuf */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		967989ED2FBD6033002B92DB /* ttc-route-alerts.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "ttc-route-alerts.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				96798A002FBEF100002B92DB /* SwiftProtobuf in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +70,7 @@
 			);
 			name = "ttc-route-alerts";
 			packageProductDependencies = (
+				96798A012FBEF100002B92DB /* SwiftProtobuf */,
 			);
 			productName = "ttc-route-alerts";
 			productReference = 967989ED2FBD6033002B92DB /* ttc-route-alerts.app */;
@@ -94,6 +100,9 @@
 			);
 			mainGroup = 967989E42FBD6033002B92DB;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				96798A022FBEF100002B92DB /* XCRemoteSwiftPackageReference "swift-protobuf" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 967989EE2FBD6033002B92DB /* Products */;
 			projectDirPath = "";
@@ -267,7 +276,6 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
@@ -298,7 +306,6 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
@@ -328,6 +335,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		96798A022FBEF100002B92DB /* XCRemoteSwiftPackageReference "swift-protobuf" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-protobuf.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.38.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		96798A012FBEF100002B92DB /* SwiftProtobuf */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 96798A022FBEF100002B92DB /* XCRemoteSwiftPackageReference "swift-protobuf" */;
+			productName = SwiftProtobuf;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 967989E52FBD6033002B92DB /* Project object */;
 }
