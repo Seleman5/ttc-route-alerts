@@ -111,7 +111,7 @@ struct ContentView: View {
             List {
                 ForEach(savedRoutes) { route in
                     NavigationLink {
-                        RouteDetailView(route: route, alerts: ttcAlerts, ttcRed: ttcRed, appBackground: appBackground)
+                        RouteDetailView(route: route, alerts: matchingAlerts(for: route), ttcRed: ttcRed, appBackground: appBackground)
                     } label: {
                         RouteCard(route: route, ttcRed: ttcRed)
                     }
@@ -160,6 +160,34 @@ struct ContentView: View {
     func deleteRoutes(at offsets: IndexSet) {
         savedRoutes.remove(atOffsets: offsets)
         saveRoutes()
+    }
+
+    func matchingAlerts(for route: TTCAlertRoute) -> [String] {
+        let routeSearchTerms = searchTerms(for: route)
+
+        return ttcAlerts.filter { alert in
+            let lowercaseAlert = alert.lowercased()
+
+            return routeSearchTerms.contains { searchTerm in
+                lowercaseAlert.contains(searchTerm)
+            }
+        }
+    }
+
+    func searchTerms(for route: TTCAlertRoute) -> [String] {
+        let lowercaseRouteName = route.name.lowercased()
+        let firstRoutePart = lowercaseRouteName
+            .split(separator: " ")
+            .first
+            .map(String.init)
+
+        var searchTerms = [lowercaseRouteName]
+
+        if let firstRoutePart {
+            searchTerms.append(firstRoutePart)
+        }
+
+        return searchTerms
     }
 
     static func loadRoutes() -> [TTCAlertRoute] {
@@ -290,7 +318,7 @@ struct RouteDetailView: View {
                 .font(.headline)
 
             if alerts.isEmpty {
-                Text("No TTC alerts found right now.")
+                Text("No alerts for this route right now.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             } else {
