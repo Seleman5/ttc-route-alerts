@@ -111,9 +111,9 @@ struct ContentView: View {
             List {
                 ForEach(savedRoutes) { route in
                     NavigationLink {
-                        RouteDetailView(route: route, alerts: matchingAlerts(for: route), ttcRed: ttcRed, appBackground: appBackground)
+                        RouteDetailView(route: route, status: routeStatus(for: route), alerts: matchingAlerts(for: route), ttcRed: ttcRed, appBackground: appBackground)
                     } label: {
-                        RouteCard(route: route, ttcRed: ttcRed)
+                        RouteCard(route: route, status: routeStatus(for: route), ttcRed: ttcRed)
                     }
                     .buttonStyle(.plain)
                         .listRowSeparator(.hidden)
@@ -174,6 +174,14 @@ struct ContentView: View {
         }
     }
 
+    func routeStatus(for route: TTCAlertRoute) -> String {
+        if matchingAlerts(for: route).isEmpty {
+            return "No major issues"
+        } else {
+            return "Service Alert"
+        }
+    }
+
     func searchTerms(for route: TTCAlertRoute) -> [String] {
         let lowercaseRouteName = route.name.lowercased()
         let firstRoutePart = lowercaseRouteName
@@ -218,6 +226,7 @@ struct ContentView: View {
 
 struct RouteCard: View {
     let route: TTCAlertRoute
+    let status: String
     let ttcRed: Color
 
     var body: some View {
@@ -236,7 +245,7 @@ struct RouteCard: View {
                     .font(.system(.headline, design: .rounded))
                     .foregroundStyle(.primary)
 
-                StatusBadge(status: route.status)
+                StatusBadge(status: status)
             }
 
             Spacer()
@@ -250,6 +259,7 @@ struct RouteCard: View {
 
 struct RouteDetailView: View {
     let route: TTCAlertRoute
+    let status: String
     let alerts: [String]
     let ttcRed: Color
     let appBackground: Color
@@ -287,7 +297,7 @@ struct RouteDetailView: View {
                 .font(.system(size: 30, weight: .bold, design: .rounded))
                 .foregroundStyle(.primary)
 
-            StatusBadge(status: route.status)
+            StatusBadge(status: status)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(18)
@@ -352,7 +362,7 @@ struct StatusBadge: View {
     }
 
     var textColor: Color {
-        if status.contains("Delay") {
+        if status.contains("Service Alert") {
             return .red
         } else if status.contains("No major") {
             return .green
@@ -362,7 +372,7 @@ struct StatusBadge: View {
     }
 
     var backgroundColor: Color {
-        if status.contains("Delay") {
+        if status.contains("Service Alert") {
             return Color.red.opacity(0.12)
         } else if status.contains("No major") {
             return Color.green.opacity(0.14)
