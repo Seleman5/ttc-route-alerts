@@ -50,6 +50,9 @@ struct ContentView: View {
             .navigationTitle("My Routes")
         }
         .tint(ttcRed)
+        .task {
+            await TTCAlertsService().fetchAlertsFeed()
+        }
     }
 
     var headerSection: some View {
