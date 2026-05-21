@@ -106,7 +106,12 @@ struct ContentView: View {
 
             List {
                 ForEach(savedRoutes) { route in
-                    RouteCard(route: route, ttcRed: ttcRed)
+                    NavigationLink {
+                        RouteDetailView(route: route, ttcRed: ttcRed, appBackground: appBackground)
+                    } label: {
+                        RouteCard(route: route, ttcRed: ttcRed)
+                    }
+                    .buttonStyle(.plain)
                         .listRowSeparator(.hidden)
                         .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
                         .listRowBackground(Color.clear)
@@ -204,6 +209,86 @@ struct RouteCard: View {
 
             Spacer()
         }
+        .padding(16)
+        .background(.white)
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .shadow(color: .black.opacity(0.06), radius: 12, x: 0, y: 5)
+    }
+}
+
+struct RouteDetailView: View {
+    let route: TTCAlertRoute
+    let ttcRed: Color
+    let appBackground: Color
+
+    var body: some View {
+        ZStack {
+            appBackground
+                .ignoresSafeArea()
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    detailHeader
+                    lastUpdatedSection
+                    alertsSection
+                }
+                .padding(20)
+            }
+        }
+        .navigationTitle(route.name)
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    var detailHeader: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Circle()
+                .fill(ttcRed)
+                .frame(width: 54, height: 54)
+                .overlay {
+                    Image(systemName: "tram.fill")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
+
+            Text(route.name)
+                .font(.system(size: 30, weight: .bold, design: .rounded))
+                .foregroundStyle(.primary)
+
+            StatusBadge(status: route.status)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(18)
+        .background(.white)
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .shadow(color: .black.opacity(0.06), radius: 14, x: 0, y: 6)
+    }
+
+    var lastUpdatedSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Last Updated")
+                .font(.headline)
+
+            Text("A few minutes ago")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(.white)
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .shadow(color: .black.opacity(0.06), radius: 12, x: 0, y: 5)
+    }
+
+    var alertsSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("TTC Alerts")
+                .font(.headline)
+
+            Text("Live TTC alerts will appear here in a future update.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
         .background(.white)
         .clipShape(RoundedRectangle(cornerRadius: 18))
