@@ -116,6 +116,10 @@ struct ContentView: View {
             .listStyle(.plain)
             .scrollDisabled(true)
             .frame(height: CGFloat(savedRoutes.count) * 108)
+
+            Text("Swipe left to remove routes")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 
