@@ -104,11 +104,18 @@ struct ContentView: View {
             Text("Saved Routes")
                 .font(.headline)
 
-            VStack(spacing: 12) {
+            List {
                 ForEach(savedRoutes) { route in
                     RouteCard(route: route, ttcRed: ttcRed)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
+                        .listRowBackground(Color.clear)
                 }
+                .onDelete(perform: deleteRoutes)
             }
+            .listStyle(.plain)
+            .scrollDisabled(true)
+            .frame(height: CGFloat(savedRoutes.count) * 108)
         }
     }
 
@@ -116,6 +123,14 @@ struct ContentView: View {
         let cleanedRoute = routeInput.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !cleanedRoute.isEmpty else {
+            return
+        }
+
+        let routeAlreadyExists = savedRoutes.contains { route in
+            route.name.lowercased() == cleanedRoute.lowercased()
+        }
+
+        guard !routeAlreadyExists else {
             return
         }
 
@@ -127,6 +142,11 @@ struct ContentView: View {
         savedRoutes.append(newRoute)
         saveRoutes()
         routeInput = ""
+    }
+
+    func deleteRoutes(at offsets: IndexSet) {
+        savedRoutes.remove(atOffsets: offsets)
+        saveRoutes()
     }
 
     static func loadRoutes() -> [TTCAlertRoute] {
