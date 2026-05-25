@@ -41,6 +41,9 @@ struct ContentView: View {
                     }
                     .padding(20)
                 }
+                .refreshable {
+                    await refreshAlerts()
+                }
             }
             .navigationTitle("My Routes")
             .toolbar {
