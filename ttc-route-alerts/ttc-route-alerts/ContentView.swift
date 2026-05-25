@@ -48,6 +48,15 @@ struct ContentView: View {
             }
             .navigationTitle("My Routes")
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    NavigationLink {
+                        SettingsView(ttcRed: ttcRed, appBackground: appBackground)
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }
+                    .accessibilityLabel("Settings")
+                }
+
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         Task {
