@@ -11,25 +11,25 @@ import SwiftProtobuf
 struct TTCAlertsService {
     let alertsFeedURL = URL(string: "https://bustime.ttc.ca/gtfsrt/alerts")!
 
-    func fetchAlertsFeed() async -> [String] {
-        do {
-            let (data, response) = try await URLSession.shared.data(from: alertsFeedURL)
+    func fetchAlertsFeed() async throws -> [String] {
+        let (data, response) = try await URLSession.shared.data(from: alertsFeedURL)
 
-            if let httpResponse = response as? HTTPURLResponse {
-                print("TTC alerts feed status: \(httpResponse.statusCode)")
-            } else {
-                print("TTC alerts feed response was not an HTTP response")
+        if let httpResponse = response as? HTTPURLResponse {
+            print("TTC alerts feed status: \(httpResponse.statusCode)")
+
+            guard (200...299).contains(httpResponse.statusCode) else {
+                throw URLError(.badServerResponse)
             }
-
-            print("TTC alerts feed data size: \(data.count) bytes")
-            return decodedAlerts(from: data)
-        } catch {
-            print("Could not fetch TTC alerts feed: \(error.localizedDescription)")
-            return []
+        } else {
+            print("TTC alerts feed response was not an HTTP response")
+            throw URLError(.badServerResponse)
         }
+
+        print("TTC alerts feed data size: \(data.count) bytes")
+        return try decodedAlerts(from: data)
     }
 
-    func decodedAlerts(from data: Data) -> [String] {
+    func decodedAlerts(from data: Data) throws -> [String] {
         do {
             let feed = try TransitRealtime_FeedMessage(serializedBytes: data)
             let alertTexts = readableAlertTexts(from: feed)
@@ -47,7 +47,7 @@ struct TTCAlertsService {
             return alertTexts
         } catch {
             print("Could not decode TTC alerts feed: \(error.localizedDescription)")
-            return []
+            throw error
         }
     }
 

@@ -70,8 +70,12 @@ struct ContentView: View {
     @State private var routeNicknameInput = ""
     @State private var savedRoutes = ContentView.loadRoutes()
     @State private var ttcAlerts: [String] = []
+    @State private var lastUpdatedDate = ContentView.loadLastUpdatedDate()
+    @State private var isRefreshing = false
+    @State private var refreshErrorMessage: String?
 
     static let savedRoutesKey = "savedRoutes"
+    static let lastUpdatedKey = "lastUpdated"
     static let starterRoutes = [
         TTCAlertRoute(name: "1", status: "No major issues", routeType: .subway, routeNumber: "1", nickname: "Yonge-University"),
         TTCAlertRoute(name: "32", status: "Delay reported", routeType: .bus, routeNumber: "32", nickname: "Eglinton West")
@@ -99,19 +103,49 @@ struct ContentView: View {
         }
         .tint(ttcRed)
         .task {
-            ttcAlerts = await TTCAlertsService().fetchAlertsFeed()
+            await refreshAlerts()
         }
     }
 
     var headerSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("TTC Route Alerts")
-                .font(.system(size: 34, weight: .bold, design: .rounded))
-                .foregroundStyle(.primary)
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("TTC Route Alerts")
+                    .font(.system(size: 34, weight: .bold, design: .rounded))
+                    .foregroundStyle(.primary)
 
-            Text("Track only the TTC routes you care about.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                Text("Track only the TTC routes you care about.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Button {
+                    Task {
+                        await refreshAlerts()
+                    }
+                } label: {
+                    Label(isRefreshing ? "Refreshing" : "Refresh", systemImage: "arrow.clockwise")
+                        .fontWeight(.semibold)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.white)
+                .background(isRefreshing ? Color.gray : ttcRed)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .disabled(isRefreshing)
+
+                Text("Last updated: \(lastUpdatedText)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if let refreshErrorMessage {
+                Text(refreshErrorMessage)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, 8)
@@ -172,7 +206,7 @@ struct ContentView: View {
             List {
                 ForEach(savedRoutes) { route in
                     NavigationLink {
-                        RouteDetailView(route: route, status: routeStatus(for: route), alerts: matchingAlerts(for: route), ttcRed: ttcRed, appBackground: appBackground)
+                        RouteDetailView(route: route, status: routeStatus(for: route), alerts: matchingAlerts(for: route), lastUpdatedText: lastUpdatedText, ttcRed: ttcRed, appBackground: appBackground)
                     } label: {
                         RouteCard(route: route, status: routeStatus(for: route), ttcRed: ttcRed)
                     }
@@ -191,6 +225,14 @@ struct ContentView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
+    }
+
+    var lastUpdatedText: String {
+        guard let lastUpdatedDate else {
+            return "Not updated yet"
+        }
+
+        return lastUpdatedDate.formatted(date: .abbreviated, time: .shortened)
     }
 
     func addRoute() {
@@ -232,6 +274,26 @@ struct ContentView: View {
     func deleteRoutes(at offsets: IndexSet) {
         savedRoutes.remove(atOffsets: offsets)
         saveRoutes()
+    }
+
+    func refreshAlerts() async {
+        guard !isRefreshing else {
+            return
+        }
+
+        isRefreshing = true
+        refreshErrorMessage = nil
+
+        do {
+            ttcAlerts = try await TTCAlertsService().fetchAlertsFeed()
+            lastUpdatedDate = Date()
+            saveLastUpdatedDate()
+        } catch {
+            refreshErrorMessage = "Could not refresh TTC alerts. Please try again."
+            print("Could not refresh TTC alerts: \(error.localizedDescription)")
+        }
+
+        isRefreshing = false
     }
 
     func matchingAlerts(for route: TTCAlertRoute) -> [String] {
@@ -318,6 +380,10 @@ struct ContentView: View {
         }
     }
 
+    static func loadLastUpdatedDate() -> Date? {
+        UserDefaults.standard.object(forKey: lastUpdatedKey) as? Date
+    }
+
     func saveRoutes() {
         do {
             let encodedRoutes = try JSONEncoder().encode(savedRoutes)
@@ -325,6 +391,10 @@ struct ContentView: View {
         } catch {
             print("Could not save routes")
         }
+    }
+
+    func saveLastUpdatedDate() {
+        UserDefaults.standard.set(lastUpdatedDate, forKey: ContentView.lastUpdatedKey)
     }
 }
 
@@ -369,6 +439,7 @@ struct RouteDetailView: View {
     let route: TTCAlertRoute
     let status: String
     let alerts: [String]
+    let lastUpdatedText: String
     let ttcRed: Color
     let appBackground: Color
 
@@ -419,7 +490,7 @@ struct RouteDetailView: View {
             Text("Last Updated")
                 .font(.headline)
 
-            Text("A few minutes ago")
+            Text(lastUpdatedText)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
