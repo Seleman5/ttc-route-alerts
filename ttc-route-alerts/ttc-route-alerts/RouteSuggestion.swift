@@ -61,9 +61,13 @@ enum RouteSuggestion {
             return typedMatch
         }
 
-        return matchingRoutes.first { suggestion in
+        if let selectedTypeMatch = matchingRoutes.first(where: { suggestion in
             suggestion.routeType == selectedRouteType
+        }) {
+            return selectedTypeMatch
         }
+
+        return matchingRoutes.first
     }
 
     static func normalizedRouteInput(_ input: String) -> String {
