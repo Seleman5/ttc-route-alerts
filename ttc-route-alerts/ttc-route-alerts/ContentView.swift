@@ -408,19 +408,8 @@ struct ContentView: View {
     }
 
     func matchingAlerts(for route: TTCAlertRoute) -> [String] {
-        let routeSearchTerms = searchTerms(for: route)
-
         return ttcAlerts.filter { alert in
-            let lowercaseAlert = alert.lowercased()
-            let alertWords = words(in: lowercaseAlert)
-
-            return routeSearchTerms.contains { searchTerm in
-                if shouldMatchWholeWord(searchTerm) {
-                    return alertWords.contains(searchTerm)
-                } else {
-                    return lowercaseAlert.contains(searchTerm)
-                }
-            }
+            matchesAlert(alert, for: route)
         }
     }
 
@@ -428,45 +417,67 @@ struct ContentView: View {
         AlertSeverity.strongestSeverity(in: matchingAlerts(for: route))
     }
 
-    func searchTerms(for route: TTCAlertRoute) -> [String] {
-        let lowercaseRouteName = route.displayName.lowercased()
-        let routeNumber = routeNumberForMatching(route)
-        let nickname = route.nickname?.lowercased()
+    func matchesAlert(_ alert: String, for route: TTCAlertRoute) -> Bool {
+        let lowercaseAlert = alert.lowercased()
+        let alertWords = words(in: lowercaseAlert)
 
-        var searchTerms = [lowercaseRouteName, route.name.lowercased()]
+        // First, match the saved route number as its own word so 34 does not match 134 or 934.
+        if let routeNumber = routeNumberForMatching(route), alertWords.contains(routeNumber) {
+            return true
+        }
 
-        if let routeNumber {
-            searchTerms.append(routeNumber)
+        // Next, support route-type phrases that TTC alert text commonly uses.
+        if let routeNumber = routeNumberForMatching(route), let routeType = route.routeType {
+            if routeType == .subway, lowercaseAlert.contains("line \(routeNumber)") {
+                return true
+            }
 
-            if route.routeType == .subway {
-                searchTerms.append("line \(routeNumber)")
-            } else {
-                searchTerms.append("route \(routeNumber)")
+            if routeType != .subway, lowercaseAlert.contains("route \(routeNumber)") {
+                return true
             }
         }
 
-        if let nickname, !nickname.isEmpty {
-            searchTerms.append(nickname)
+        // Subway Line 1 is often described by either its number or its common line name.
+        if isSubwayLineOne(route) {
+            let subwayLineOneNames = ["line 1", "yonge-university", "yonge university"]
+
+            if subwayLineOneNames.contains(where: { lowercaseAlert.contains($0) }) {
+                return true
+            }
         }
 
-        return Array(Set(searchTerms))
+        // Nicknames are helpful, but they are a fallback because many route names overlap.
+        if let nickname = route.nickname?.lowercased(), !nickname.isEmpty {
+            return lowercaseAlert.contains(nickname)
+        }
+
+        return false
     }
 
     func routeNumberForMatching(_ route: TTCAlertRoute) -> String? {
         if let routeNumber = route.routeNumber?.lowercased(), !routeNumber.isEmpty {
-            return routeNumber
+            return firstNumber(in: routeNumber) ?? routeNumber
         }
 
-        return route.name
-            .lowercased()
-            .components(separatedBy: CharacterSet.decimalDigits.inverted)
-            .first { !$0.isEmpty }
+        return firstNumber(in: route.name.lowercased())
     }
 
-    func shouldMatchWholeWord(_ searchTerm: String) -> Bool {
-        searchTerm.allSatisfy { character in
-            character.isLetter || character.isNumber
-        }
+    func isSubwayLineOne(_ route: TTCAlertRoute) -> Bool {
+        let routeNumber = routeNumberForMatching(route)
+        let routeName = route.name.lowercased()
+        let routeNickname = route.nickname?.lowercased()
+
+        return routeNumber == "1"
+            && (route.routeType == .subway
+                || routeName.contains("line 1")
+                || routeNickname == "yonge-university"
+                || routeNickname == "yonge university")
+    }
+
+    func firstNumber(in text: String) -> String? {
+        text
+            .components(separatedBy: CharacterSet.decimalDigits.inverted)
+            .first { !$0.isEmpty }
     }
 
     func words(in text: String) -> [String] {
