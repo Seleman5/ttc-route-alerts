@@ -252,7 +252,7 @@ struct ContentView: View {
             return "Not updated yet"
         }
 
-        return lastUpdatedDate.formatted(date: .abbreviated, time: .shortened)
+        return TimeFormatter.lastUpdatedText(for: lastUpdatedDate)
     }
 
     var filteredSuggestedRoutes: [SuggestedRoute] {
