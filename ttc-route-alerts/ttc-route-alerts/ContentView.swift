@@ -23,6 +23,120 @@ struct ContentView: View {
         TTCAlertRoute(name: "1", status: "No major issues", routeType: .subway, routeNumber: "1", nickname: "Yonge-University"),
         TTCAlertRoute(name: "32", status: "Delay reported", routeType: .bus, routeNumber: "32", nickname: "Eglinton West")
     ]
+    // Temporary starter dataset for route autocomplete.
+    // Later, this should be replaced with a full TTC GTFS routes database.
+    static let suggestedRoutes = [
+        SuggestedRoute(routeType: .subway, routeNumber: "1", nickname: "Yonge-University"),
+        SuggestedRoute(routeType: .subway, routeNumber: "2", nickname: "Bloor-Danforth"),
+        SuggestedRoute(routeType: .subway, routeNumber: "4", nickname: "Sheppard"),
+        SuggestedRoute(routeType: .streetcar, routeNumber: "501", nickname: "Queen"),
+        SuggestedRoute(routeType: .streetcar, routeNumber: "502", nickname: "Downtowner"),
+        SuggestedRoute(routeType: .streetcar, routeNumber: "503", nickname: "Kingston Rd"),
+        SuggestedRoute(routeType: .streetcar, routeNumber: "504", nickname: "King"),
+        SuggestedRoute(routeType: .streetcar, routeNumber: "505", nickname: "Dundas"),
+        SuggestedRoute(routeType: .streetcar, routeNumber: "506", nickname: "Carlton"),
+        SuggestedRoute(routeType: .streetcar, routeNumber: "507", nickname: "Long Branch"),
+        SuggestedRoute(routeType: .streetcar, routeNumber: "508", nickname: "Lake Shore"),
+        SuggestedRoute(routeType: .streetcar, routeNumber: "509", nickname: "Harbourfront"),
+        SuggestedRoute(routeType: .streetcar, routeNumber: "510", nickname: "Spadina"),
+        SuggestedRoute(routeType: .streetcar, routeNumber: "511", nickname: "Bathurst"),
+        SuggestedRoute(routeType: .streetcar, routeNumber: "512", nickname: "St Clair"),
+        SuggestedRoute(routeType: .bus, routeNumber: "7", nickname: "Bathurst"),
+        SuggestedRoute(routeType: .bus, routeNumber: "8", nickname: "Broadview"),
+        SuggestedRoute(routeType: .bus, routeNumber: "9", nickname: "Bellamy"),
+        SuggestedRoute(routeType: .bus, routeNumber: "10", nickname: "Van Horne"),
+        SuggestedRoute(routeType: .bus, routeNumber: "11", nickname: "Bayview"),
+        SuggestedRoute(routeType: .bus, routeNumber: "12", nickname: "Kingston Road"),
+        SuggestedRoute(routeType: .bus, routeNumber: "13", nickname: "Avenue Road"),
+        SuggestedRoute(routeType: .bus, routeNumber: "14", nickname: "Glencairn"),
+        SuggestedRoute(routeType: .bus, routeNumber: "16", nickname: "McCowan"),
+        SuggestedRoute(routeType: .bus, routeNumber: "17", nickname: "Birchmount"),
+        SuggestedRoute(routeType: .bus, routeNumber: "19", nickname: "Bay"),
+        SuggestedRoute(routeType: .bus, routeNumber: "20", nickname: "Cliffside"),
+        SuggestedRoute(routeType: .bus, routeNumber: "21", nickname: "Brimley"),
+        SuggestedRoute(routeType: .bus, routeNumber: "22", nickname: "Coxwell"),
+        SuggestedRoute(routeType: .bus, routeNumber: "23", nickname: "Dawes"),
+        SuggestedRoute(routeType: .bus, routeNumber: "24", nickname: "Victoria Park"),
+        SuggestedRoute(routeType: .bus, routeNumber: "25", nickname: "Don Mills"),
+        SuggestedRoute(routeType: .bus, routeNumber: "26", nickname: "Dupont"),
+        SuggestedRoute(routeType: .bus, routeNumber: "28", nickname: "Bayview South"),
+        SuggestedRoute(routeType: .bus, routeNumber: "29", nickname: "Dufferin"),
+        SuggestedRoute(routeType: .bus, routeNumber: "30", nickname: "High Park"),
+        SuggestedRoute(routeType: .bus, routeNumber: "31", nickname: "Greenwood"),
+        SuggestedRoute(routeType: .bus, routeNumber: "32", nickname: "Eglinton West"),
+        SuggestedRoute(routeType: .bus, routeNumber: "33", nickname: "Forest Hill"),
+        SuggestedRoute(routeType: .bus, routeNumber: "34", nickname: "Eglinton East"),
+        SuggestedRoute(routeType: .bus, routeNumber: "35", nickname: "Jane"),
+        SuggestedRoute(routeType: .bus, routeNumber: "36", nickname: "Finch West"),
+        SuggestedRoute(routeType: .bus, routeNumber: "37", nickname: "Islington"),
+        SuggestedRoute(routeType: .bus, routeNumber: "38", nickname: "Highland Creek"),
+        SuggestedRoute(routeType: .bus, routeNumber: "39", nickname: "Finch East"),
+        SuggestedRoute(routeType: .bus, routeNumber: "40", nickname: "Junction-Dundas West"),
+        SuggestedRoute(routeType: .bus, routeNumber: "41", nickname: "Keele"),
+        SuggestedRoute(routeType: .bus, routeNumber: "42", nickname: "Cummer"),
+        SuggestedRoute(routeType: .bus, routeNumber: "43", nickname: "Kennedy"),
+        SuggestedRoute(routeType: .bus, routeNumber: "44", nickname: "Kipling South"),
+        SuggestedRoute(routeType: .bus, routeNumber: "45", nickname: "Kipling"),
+        SuggestedRoute(routeType: .bus, routeNumber: "46", nickname: "Martin Grove"),
+        SuggestedRoute(routeType: .bus, routeNumber: "47", nickname: "Lansdowne"),
+        SuggestedRoute(routeType: .bus, routeNumber: "48", nickname: "Rathburn"),
+        SuggestedRoute(routeType: .bus, routeNumber: "49", nickname: "Bloor West"),
+        SuggestedRoute(routeType: .bus, routeNumber: "50", nickname: "Burnhamthorpe"),
+        SuggestedRoute(routeType: .bus, routeNumber: "51", nickname: "Leslie"),
+        SuggestedRoute(routeType: .bus, routeNumber: "52", nickname: "Lawrence West"),
+        SuggestedRoute(routeType: .bus, routeNumber: "53", nickname: "Steeles East"),
+        SuggestedRoute(routeType: .bus, routeNumber: "54", nickname: "Lawrence East"),
+        SuggestedRoute(routeType: .bus, routeNumber: "55", nickname: "Warren Park"),
+        SuggestedRoute(routeType: .bus, routeNumber: "56", nickname: "Leaside"),
+        SuggestedRoute(routeType: .bus, routeNumber: "57", nickname: "Midland"),
+        SuggestedRoute(routeType: .bus, routeNumber: "59", nickname: "Maple Leaf"),
+        SuggestedRoute(routeType: .bus, routeNumber: "60", nickname: "Steeles West"),
+        SuggestedRoute(routeType: .bus, routeNumber: "61", nickname: "Avenue Road North"),
+        SuggestedRoute(routeType: .bus, routeNumber: "62", nickname: "Mortimer"),
+        SuggestedRoute(routeType: .bus, routeNumber: "63", nickname: "Ossington"),
+        SuggestedRoute(routeType: .bus, routeNumber: "64", nickname: "Main"),
+        SuggestedRoute(routeType: .bus, routeNumber: "65", nickname: "Parliament"),
+        SuggestedRoute(routeType: .bus, routeNumber: "66", nickname: "Prince Edward"),
+        SuggestedRoute(routeType: .bus, routeNumber: "67", nickname: "Pharmacy"),
+        SuggestedRoute(routeType: .bus, routeNumber: "68", nickname: "Warden"),
+        SuggestedRoute(routeType: .bus, routeNumber: "69", nickname: "Warden South"),
+        SuggestedRoute(routeType: .bus, routeNumber: "70", nickname: "O'Connor"),
+        SuggestedRoute(routeType: .bus, routeNumber: "71", nickname: "Runnymede"),
+        SuggestedRoute(routeType: .bus, routeNumber: "72", nickname: "Pape"),
+        SuggestedRoute(routeType: .bus, routeNumber: "73", nickname: "Royal York"),
+        SuggestedRoute(routeType: .bus, routeNumber: "74", nickname: "Mount Pleasant"),
+        SuggestedRoute(routeType: .bus, routeNumber: "75", nickname: "Sherbourne"),
+        SuggestedRoute(routeType: .bus, routeNumber: "76", nickname: "Royal York South"),
+        SuggestedRoute(routeType: .bus, routeNumber: "77", nickname: "Swansea"),
+        SuggestedRoute(routeType: .bus, routeNumber: "78", nickname: "St Andrews"),
+        SuggestedRoute(routeType: .bus, routeNumber: "79", nickname: "Scarlett Road"),
+        SuggestedRoute(routeType: .bus, routeNumber: "80", nickname: "Queensway"),
+        SuggestedRoute(routeType: .bus, routeNumber: "81", nickname: "Thorncliffe Park"),
+        SuggestedRoute(routeType: .bus, routeNumber: "82", nickname: "Rosedale"),
+        SuggestedRoute(routeType: .bus, routeNumber: "83", nickname: "Jones"),
+        SuggestedRoute(routeType: .bus, routeNumber: "84", nickname: "Sheppard West"),
+        SuggestedRoute(routeType: .bus, routeNumber: "85", nickname: "Sheppard East"),
+        SuggestedRoute(routeType: .bus, routeNumber: "86", nickname: "Scarborough"),
+        SuggestedRoute(routeType: .bus, routeNumber: "87", nickname: "Cosburn"),
+        SuggestedRoute(routeType: .bus, routeNumber: "88", nickname: "South Leaside"),
+        SuggestedRoute(routeType: .bus, routeNumber: "89", nickname: "Weston"),
+        SuggestedRoute(routeType: .bus, routeNumber: "90", nickname: "Vaughan"),
+        SuggestedRoute(routeType: .bus, routeNumber: "91", nickname: "Woodbine"),
+        SuggestedRoute(routeType: .bus, routeNumber: "92", nickname: "Woodbine South"),
+        SuggestedRoute(routeType: .bus, routeNumber: "93", nickname: "Parkview Hills"),
+        SuggestedRoute(routeType: .bus, routeNumber: "94", nickname: "Wellesley"),
+        SuggestedRoute(routeType: .bus, routeNumber: "95", nickname: "York Mills"),
+        SuggestedRoute(routeType: .bus, routeNumber: "96", nickname: "Wilson"),
+        SuggestedRoute(routeType: .bus, routeNumber: "97", nickname: "Yonge"),
+        SuggestedRoute(routeType: .bus, routeNumber: "98", nickname: "Willowdale-Senlac"),
+        SuggestedRoute(routeType: .bus, routeNumber: "100", nickname: "Flemingdon Park"),
+        SuggestedRoute(routeType: .bus, routeNumber: "102", nickname: "Markham Road"),
+        SuggestedRoute(routeType: .bus, routeNumber: "106", nickname: "Sentinel"),
+        SuggestedRoute(routeType: .bus, routeNumber: "116", nickname: "Morningside"),
+        SuggestedRoute(routeType: .bus, routeNumber: "123", nickname: "Sherway"),
+        SuggestedRoute(routeType: .bus, routeNumber: "129", nickname: "McCowan North"),
+        SuggestedRoute(routeType: .bus, routeNumber: "134", nickname: "Progress")
+    ]
 
     let ttcRed = Color(red: 0.85, green: 0.06, blue: 0.10)
     let appBackground = Color(red: 0.96, green: 0.96, blue: 0.95)
@@ -155,6 +269,8 @@ struct ContentView: View {
                 .background(Color(.systemGray6))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
 
+            routeSuggestionsSection
+
             Button {
                 addRoute()
             } label: {
@@ -173,6 +289,43 @@ struct ContentView: View {
         .background(.white)
         .clipShape(RoundedRectangle(cornerRadius: 18))
         .shadow(color: .black.opacity(0.06), radius: 14, x: 0, y: 6)
+    }
+
+    var routeSuggestionsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Suggested Routes")
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .foregroundStyle(.secondary)
+
+            ForEach(filteredSuggestedRoutes) { suggestion in
+                Button {
+                    selectSuggestedRoute(suggestion)
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(suggestion.displayName)
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(.primary)
+
+                            Text(suggestion.routeType.rawValue)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer()
+
+                        Image(systemName: "plus.circle.fill")
+                            .foregroundStyle(ttcRed)
+                    }
+                    .padding(12)
+                    .background(Color(.systemGray6))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
+            }
+        }
     }
 
     var routesSection: some View {
@@ -214,6 +367,26 @@ struct ContentView: View {
         }
 
         return lastUpdatedDate.formatted(date: .abbreviated, time: .shortened)
+    }
+
+    var filteredSuggestedRoutes: [SuggestedRoute] {
+        let searchText = routeNumberInput.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+        if searchText.isEmpty {
+            return ContentView.suggestedRoutes.filter { suggestion in
+                suggestion.routeType == selectedRouteType
+            }
+        }
+
+        return ContentView.suggestedRoutes.filter { suggestion in
+            suggestion.matches(searchText)
+        }
+    }
+
+    func selectSuggestedRoute(_ suggestion: SuggestedRoute) {
+        selectedRouteType = suggestion.routeType
+        routeNumberInput = suggestion.routeNumber
+        routeNicknameInput = suggestion.nickname
     }
 
     func addRoute() {
@@ -319,6 +492,44 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
+}
+
+struct SuggestedRoute: Identifiable {
+    let routeType: RouteType
+    let routeNumber: String
+    let nickname: String
+
+    var id: String {
+        "\(routeType.rawValue)-\(routeNumber)"
+    }
+
+    var displayName: String {
+        "\(typeLabel) \(routeNumber) - \(nickname)"
+    }
+
+    var typeLabel: String {
+        if routeType == .subway {
+            return "Subway Line"
+        } else {
+            return routeType.rawValue
+        }
+    }
+
+    func matches(_ searchText: String) -> Bool {
+        let searchableText = [
+            routeType.rawValue,
+            typeLabel,
+            routeNumber,
+            nickname,
+            displayName
+        ]
+        .joined(separator: " ")
+        .lowercased()
+
+        return searchText
+            .split(separator: " ")
+            .allSatisfy { searchableText.contains($0) }
+    }
 }
 
 struct EmptyRoutesView: View {
