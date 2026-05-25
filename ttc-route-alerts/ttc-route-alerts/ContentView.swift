@@ -16,6 +16,7 @@ struct ContentView: View {
     @State private var lastUpdatedDate = ContentView.loadLastUpdatedDate()
     @State private var isRefreshing = false
     @State private var refreshErrorMessage: String?
+    @State private var editingRouteID: UUID?
 
     static let savedRoutesKey = "savedRoutes"
     static let lastUpdatedKey = "lastUpdated"
@@ -130,7 +131,7 @@ struct ContentView: View {
 
     var addRouteSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Add Route")
+            Text(editingRouteID == nil ? "Add Route" : "Edit Route")
                 .font(.headline)
 
             Picker("Route Type", selection: $selectedRouteType) {
@@ -158,9 +159,9 @@ struct ContentView: View {
             routeSuggestionsSection
 
             Button {
-                addRoute()
+                saveRouteForm()
             } label: {
-                Text("Add Route")
+                Text(editingRouteID == nil ? "Add Route" : "Save Changes")
                     .fontWeight(.semibold)
                     .frame(maxWidth: .infinity)
                     .padding(.horizontal, 14)
@@ -170,6 +171,22 @@ struct ContentView: View {
             .foregroundStyle(.white)
             .background(ttcRed)
             .clipShape(RoundedRectangle(cornerRadius: 12))
+
+            if editingRouteID != nil {
+                Button {
+                    clearRouteForm()
+                } label: {
+                    Text("Cancel")
+                        .fontWeight(.semibold)
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 12)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(ttcRed)
+                .background(ttcRed.opacity(0.10))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
         }
         .padding(16)
         .background(.white)
@@ -233,6 +250,20 @@ struct ContentView: View {
                             .listRowSeparator(.hidden)
                             .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
                             .listRowBackground(Color.clear)
+                            .swipeActions {
+                                Button(role: .destructive) {
+                                    deleteRoute(route)
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+
+                                Button {
+                                    startEditing(route)
+                                } label: {
+                                    Label("Edit", systemImage: "pencil")
+                                }
+                                .tint(ttcRed)
+                            }
                     }
                     .onDelete(perform: deleteRoutes)
                 }
@@ -240,7 +271,7 @@ struct ContentView: View {
                 .scrollDisabled(true)
                 .frame(height: CGFloat(savedRoutes.count) * 108)
 
-                Text("Swipe left to remove routes")
+                Text("Swipe left to edit or remove routes")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -275,21 +306,36 @@ struct ContentView: View {
         routeNicknameInput = suggestion.nickname
     }
 
-    func addRoute() {
+    func saveRouteForm() {
+        if editingRouteID == nil {
+            addRoute()
+        } else {
+            saveEditedRoute()
+        }
+    }
+
+    func routeFromForm(id: UUID = UUID(), status: String = "Checking status...") -> TTCAlertRoute? {
         let cleanedRouteNumber = routeNumberInput.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanedNickname = routeNicknameInput.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !cleanedRouteNumber.isEmpty else {
-            return
+            return nil
         }
 
-        let newRoute = TTCAlertRoute(
+        return TTCAlertRoute(
+            id: id,
             name: cleanedRouteNumber,
-            status: "Checking status...",
+            status: status,
             routeType: selectedRouteType,
             routeNumber: cleanedRouteNumber,
             nickname: cleanedNickname.isEmpty ? nil : cleanedNickname
         )
+    }
+
+    func addRoute() {
+        guard let newRoute = routeFromForm() else {
+            return
+        }
 
         guard !routeAlreadySaved(newRoute) else {
             return
@@ -297,12 +343,51 @@ struct ContentView: View {
 
         savedRoutes.append(newRoute)
         saveRoutes()
+        clearRouteForm()
+    }
+
+    func startEditing(_ route: TTCAlertRoute) {
+        editingRouteID = route.id
+        selectedRouteType = route.routeType ?? .subway
+        routeNumberInput = route.routeNumber ?? route.name
+        routeNicknameInput = route.nickname ?? ""
+    }
+
+    func saveEditedRoute() {
+        guard let editingRouteID,
+              let routeIndex = savedRoutes.firstIndex(where: { $0.id == editingRouteID }) else {
+            clearRouteForm()
+            return
+        }
+
+        let currentRoute = savedRoutes[routeIndex]
+
+        guard let editedRoute = routeFromForm(id: currentRoute.id, status: currentRoute.status) else {
+            return
+        }
+
+        guard !routeAlreadySaved(editedRoute, excludingRouteID: editingRouteID) else {
+            return
+        }
+
+        savedRoutes[routeIndex] = editedRoute
+        saveRoutes()
+        clearRouteForm()
+    }
+
+    func clearRouteForm() {
+        editingRouteID = nil
+        selectedRouteType = .subway
         routeNumberInput = ""
         routeNicknameInput = ""
     }
 
-    func routeAlreadySaved(_ newRoute: TTCAlertRoute) -> Bool {
+    func routeAlreadySaved(_ newRoute: TTCAlertRoute, excludingRouteID: UUID? = nil) -> Bool {
         savedRoutes.contains { savedRoute in
+            if savedRoute.id == excludingRouteID {
+                return false
+            }
+
             let sameDisplayName = savedRoute.displayName.lowercased() == newRoute.displayName.lowercased()
             let sameRouteType = savedRoute.routeType == nil || savedRoute.routeType == newRoute.routeType
             let sameRouteNumber = RouteMatcher.routeNumber(for: savedRoute) == RouteMatcher.routeNumber(for: newRoute)
@@ -312,8 +397,24 @@ struct ContentView: View {
     }
 
     func deleteRoutes(at offsets: IndexSet) {
+        let deletedRouteIDs = offsets.map { savedRoutes[$0].id }
         savedRoutes.remove(atOffsets: offsets)
         saveRoutes()
+
+        if let editingRouteID, deletedRouteIDs.contains(editingRouteID) {
+            clearRouteForm()
+        }
+    }
+
+    func deleteRoute(_ route: TTCAlertRoute) {
+        savedRoutes.removeAll { savedRoute in
+            savedRoute.id == route.id
+        }
+        saveRoutes()
+
+        if editingRouteID == route.id {
+            clearRouteForm()
+        }
     }
 
     func refreshAlerts() async {
