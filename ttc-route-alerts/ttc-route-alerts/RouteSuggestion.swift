@@ -44,6 +44,93 @@ struct SuggestedRoute: Identifiable {
 }
 
 enum RouteSuggestion {
+    static func matchingSuggestion(for input: String, selectedRouteType: RouteType) -> SuggestedRoute? {
+        let cleanedInput = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedInput = normalizedRouteInput(cleanedInput)
+
+        guard let routeNumber = firstNumericWord(in: normalizedInput) ?? firstNumericWord(in: cleanedInput) else {
+            return nil
+        }
+
+        let matchingRoutes = suggestedRoutes.filter { suggestion in
+            suggestion.routeNumber == routeNumber
+        }
+
+        if let typedRouteType = routeType(in: cleanedInput),
+           let typedMatch = matchingRoutes.first(where: { $0.routeType == typedRouteType }) {
+            return typedMatch
+        }
+
+        return matchingRoutes.first { suggestion in
+            suggestion.routeType == selectedRouteType
+        }
+    }
+
+    static func normalizedRouteInput(_ input: String) -> String {
+        var cleanedInput = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        var didRemovePrefix = true
+
+        // Remove route type words users may type before the route number.
+        while didRemovePrefix {
+            didRemovePrefix = false
+            let lowercaseInput = cleanedInput.lowercased()
+
+            for prefix in routeInputPrefixes {
+                if lowercaseInput == prefix {
+                    return ""
+                }
+
+                if lowercaseInput.hasPrefix("\(prefix) ") {
+                    cleanedInput = String(cleanedInput.dropFirst(prefix.count))
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                    didRemovePrefix = true
+                    break
+                }
+            }
+        }
+
+        return cleanedInput
+    }
+
+    private static let routeInputPrefixes = [
+        "bus",
+        "subway",
+        "line",
+        "streetcar"
+    ]
+
+    private static func routeType(in input: String) -> RouteType? {
+        let words = input
+            .lowercased()
+            .split { !$0.isLetter }
+            .map(String.init)
+
+        if words.contains("bus") {
+            return .bus
+        }
+
+        if words.contains("streetcar") {
+            return .streetcar
+        }
+
+        if words.contains("subway") || words.contains("line") {
+            return .subway
+        }
+
+        return nil
+    }
+
+    private static func firstNumericWord(in text: String) -> String? {
+        text
+            .split { !$0.isLetter && !$0.isNumber }
+            .map(String.init)
+            .first { word in
+                word.allSatisfy { character in
+                    character.isNumber
+                }
+            }
+    }
+
     // Temporary starter dataset for route autocomplete.
     // Later, this should be replaced with a full TTC GTFS routes database.
     static let suggestedRoutes = [
@@ -90,7 +177,7 @@ enum RouteSuggestion {
         SuggestedRoute(routeType: .bus, routeNumber: "95", nickname: "York Mills"),
         SuggestedRoute(routeType: .bus, routeNumber: "96", nickname: "Wilson"),
         SuggestedRoute(routeType: .bus, routeNumber: "97", nickname: "Yonge"),
-        SuggestedRoute(routeType: .bus, routeNumber: "100", nickname: "Flemingdon Park"),
+        SuggestedRoute(routeType: .bus, routeNumber: "100", nickname: "Broadview Station to Flemingdon Park"),
         SuggestedRoute(routeType: .bus, routeNumber: "116", nickname: "Morningside")
     ]
 }

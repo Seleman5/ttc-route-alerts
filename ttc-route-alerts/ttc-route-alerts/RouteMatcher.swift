@@ -9,33 +9,28 @@ struct RouteMatcher {
     static func matches(_ alert: String, route: TTCAlertRoute) -> Bool {
         let lowercaseAlert = alert.lowercased()
         let alertWords = words(in: lowercaseAlert)
+        let savedRouteNumber = routeNumber(for: route)
 
-        // First, match the saved route number as its own word so 34 does not match 134 or 934.
-        if let routeNumber = routeNumber(for: route), alertWords.contains(routeNumber) {
+        // 1. Route number matching always runs first.
+        // The number must be a full token so route 39 does not match 939.
+        if let savedRouteNumber, alertWords.contains(savedRouteNumber) {
             return true
         }
 
-        // Next, support route-type phrases that TTC alert text commonly uses.
-        if let routeNumber = routeNumber(for: route), let routeType = route.routeType {
-            if routeType == .subway, lowercaseAlert.contains("line \(routeNumber)") {
+        // 2. Some TTC text uses phrases like "Line 1" or "Route 939".
+        // These still depend on the same saved route number.
+        if let savedRouteNumber, let routeType = route.routeType {
+            if routeType == .subway, containsFullTokenPhrase(["line", savedRouteNumber], in: alertWords) {
                 return true
             }
 
-            if routeType != .subway, lowercaseAlert.contains("route \(routeNumber)") {
-                return true
-            }
-        }
-
-        // Subway Line 1 is often described by either its number or its common line name.
-        if isSubwayLineOne(route) {
-            let subwayLineOneNames = ["line 1", "yonge-university", "yonge university"]
-
-            if subwayLineOneNames.contains(where: { lowercaseAlert.contains($0) }) {
+            if routeType != .subway, containsFullTokenPhrase(["route", savedRouteNumber], in: alertWords) {
                 return true
             }
         }
 
-        // Nicknames are helpful, but they are a fallback because many route names overlap.
+        // 3. Nicknames are only a fallback after route number matching fails.
+        // This helps catch names like "Finch Express" without letting names outrank numbers.
         if let nickname = route.nickname?.lowercased(), !nickname.isEmpty {
             return lowercaseAlert.contains(nickname)
         }
@@ -45,28 +40,32 @@ struct RouteMatcher {
 
     static func routeNumber(for route: TTCAlertRoute) -> String? {
         if let routeNumber = route.routeNumber?.lowercased(), !routeNumber.isEmpty {
-            return firstNumber(in: routeNumber) ?? routeNumber
+            return firstNumber(in: routeNumber)
         }
 
         return firstNumber(in: route.name.lowercased())
-    }
-
-    private static func isSubwayLineOne(_ route: TTCAlertRoute) -> Bool {
-        let routeNumber = routeNumber(for: route)
-        let routeName = route.name.lowercased()
-        let routeNickname = route.nickname?.lowercased()
-
-        return routeNumber == "1"
-            && (route.routeType == .subway
-                || routeName.contains("line 1")
-                || routeNickname == "yonge-university"
-                || routeNickname == "yonge university")
     }
 
     private static func firstNumber(in text: String) -> String? {
         text
             .components(separatedBy: CharacterSet.decimalDigits.inverted)
             .first { !$0.isEmpty }
+    }
+
+    private static func containsFullTokenPhrase(_ phraseWords: [String], in alertWords: [String]) -> Bool {
+        guard !phraseWords.isEmpty, alertWords.count >= phraseWords.count else {
+            return false
+        }
+
+        for startIndex in 0...(alertWords.count - phraseWords.count) {
+            let endIndex = startIndex + phraseWords.count
+
+            if Array(alertWords[startIndex..<endIndex]) == phraseWords {
+                return true
+            }
+        }
+
+        return false
     }
 
     private static func words(in text: String) -> [String] {

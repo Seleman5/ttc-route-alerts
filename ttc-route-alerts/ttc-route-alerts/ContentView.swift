@@ -324,8 +324,16 @@ struct ContentView: View {
     }
 
     func routeFromForm(id: UUID = UUID(), status: String = "Checking status...") -> TTCAlertRoute? {
-        let cleanedRouteNumber = routeNumberInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanedRouteInput = routeNumberInput.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanedNickname = routeNicknameInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        let matchingSuggestion = RouteSuggestion.matchingSuggestion(
+            for: cleanedRouteInput,
+            selectedRouteType: selectedRouteType
+        )
+
+        let cleanedRouteNumber = matchingSuggestion?.routeNumber ?? RouteSuggestion.normalizedRouteInput(cleanedRouteInput)
+        let routeType = matchingSuggestion?.routeType ?? selectedRouteType
+        let nickname = matchingSuggestion?.nickname ?? (cleanedNickname.isEmpty ? nil : cleanedNickname)
 
         guard !cleanedRouteNumber.isEmpty else {
             return nil
@@ -335,9 +343,9 @@ struct ContentView: View {
             id: id,
             name: cleanedRouteNumber,
             status: status,
-            routeType: selectedRouteType,
+            routeType: routeType,
             routeNumber: cleanedRouteNumber,
-            nickname: cleanedNickname.isEmpty ? nil : cleanedNickname
+            nickname: nickname
         )
     }
 
@@ -448,7 +456,14 @@ struct ContentView: View {
 
     func matchingAlerts(for route: TTCAlertRoute) -> [String] {
         return ttcAlerts.filter { alert in
-            RouteMatcher.matches(alert, route: route)
+            let didMatch = RouteMatcher.matches(alert, route: route)
+
+            print("Route matching debug")
+            print("Route checked: \(route.displayName)")
+            print("Alert checked: \(alert)")
+            print("Match succeeded: \(didMatch)")
+
+            return didMatch
         }
     }
 
