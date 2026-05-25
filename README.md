@@ -1,3 +1,14 @@
+## Why I Built This
+
+TTC provides general service alerts, but commuters usually only care about routes they actually use. TTC Route Alerts focuses on personalized route tracking by allowing users to save routes and quickly see relevant service disruptions.
+
+## Running the App
+
+1. Clone the repository
+2. Open the project in Xcode
+3. Build and run on an iPhone simulator or device
+
+
 # TTC Route Alerts
 
 TTC Route Alerts is a SwiftUI app for saving your regular TTC routes and checking live service alerts that may affect them. It stores your saved routes locally, fetches current TTC alert data, and shows route status updates in a simple, easy-to-read interface.
@@ -29,13 +40,13 @@ TTC Route Alerts is a SwiftUI app for saving your regular TTC routes and checkin
 
 ## Current Screenshots
 
-![TTC Route Alerts home screen](Screenshots/Simulator%20Screenshot%20-%20iPhone%2017%20Pro%20-%202026-05-25%20at%2012.07.35.png)
+![TTC Route Alerts home screen](Screenshots/home-screen.png)
 
-![TTC Route Alerts route list](Screenshots/Simulator%20Screenshot%20-%20iPhone%2017%20Pro%20-%202026-05-25%20at%2012.09.50.png)
+![TTC Route Alerts route list](Screenshots/route-list.png)
 
-![TTC Route Alerts route details](Screenshots/Simulator%20Screenshot%20-%20iPhone%2017%20Pro%20-%202026-05-25%20at%2012.10.04.png)
+![TTC Route Alerts delete route screen](Screenshots/delete-route.png)
 
-![TTC Route Alerts alert details](Screenshots/Simulator%20Screenshot%20-%20iPhone%2017%20Pro%20-%202026-05-25%20at%2012.10.41.png)
+![TTC Route Alerts alert detail screen](Screenshots/alert-detail.png)
 
 ## Future Improvements
 
