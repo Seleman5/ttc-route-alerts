@@ -29,7 +29,13 @@ TTC Route Alerts is a SwiftUI app for saving your regular TTC routes and checkin
 
 ## Current Screenshots
 
-Screenshots coming soon.
+![TTC Route Alerts home screen](Screenshots/Simulator%20Screenshot%20-%20iPhone%2017%20Pro%20-%202026-05-25%20at%2012.07.35.png)
+
+![TTC Route Alerts route list](Screenshots/Simulator%20Screenshot%20-%20iPhone%2017%20Pro%20-%202026-05-25%20at%2012.09.50.png)
+
+![TTC Route Alerts route details](Screenshots/Simulator%20Screenshot%20-%20iPhone%2017%20Pro%20-%202026-05-25%20at%2012.10.04.png)
+
+![TTC Route Alerts alert details](Screenshots/Simulator%20Screenshot%20-%20iPhone%2017%20Pro%20-%202026-05-25%20at%2012.10.41.png)
 
 ## Future Improvements
 

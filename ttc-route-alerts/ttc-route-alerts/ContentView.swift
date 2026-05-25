@@ -43,6 +43,19 @@ struct ContentView: View {
                 }
             }
             .navigationTitle("My Routes")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        Task {
+                            await refreshAlerts()
+                        }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                    .disabled(isRefreshing)
+                    .accessibilityLabel(isRefreshing ? "Refreshing alerts" : "Refresh alerts")
+                }
+            }
         }
         .tint(ttcRed)
         .task {
@@ -63,22 +76,6 @@ struct ContentView: View {
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                Button {
-                    Task {
-                        await refreshAlerts()
-                    }
-                } label: {
-                    Label(isRefreshing ? "Refreshing" : "Refresh", systemImage: "arrow.clockwise")
-                        .fontWeight(.semibold)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(.white)
-                .background(isRefreshing ? Color.gray : ttcRed)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .disabled(isRefreshing)
-
                 Text("Last updated: \(lastUpdatedText)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
