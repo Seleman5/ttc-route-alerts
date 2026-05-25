@@ -139,12 +139,46 @@ struct ContentView: View {
                 Text("Last updated: \(lastUpdatedText)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+
+                if isRefreshing {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                            .controlSize(.small)
+
+                        Text("Refreshing alerts...")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
 
             if let refreshErrorMessage {
-                Text(refreshErrorMessage)
-                    .font(.caption)
-                    .foregroundStyle(.red)
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(refreshErrorMessage)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+
+                    Button {
+                        Task {
+                            await refreshAlerts()
+                        }
+                    } label: {
+                        Text("Retry")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.white)
+                    .background(ttcRed)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .disabled(isRefreshing)
+                }
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.red.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -203,27 +237,31 @@ struct ContentView: View {
             Text("Saved Routes")
                 .font(.headline)
 
-            List {
-                ForEach(savedRoutes) { route in
-                    NavigationLink {
-                        RouteDetailView(route: route, status: routeStatus(for: route), alerts: matchingAlerts(for: route), lastUpdatedText: lastUpdatedText, ttcRed: ttcRed, appBackground: appBackground)
-                    } label: {
-                        RouteCard(route: route, status: routeStatus(for: route), ttcRed: ttcRed)
+            if savedRoutes.isEmpty {
+                EmptyRoutesView(ttcRed: ttcRed)
+            } else {
+                List {
+                    ForEach(savedRoutes) { route in
+                        NavigationLink {
+                            RouteDetailView(route: route, status: routeStatus(for: route), alerts: matchingAlerts(for: route), lastUpdatedText: lastUpdatedText, ttcRed: ttcRed, appBackground: appBackground)
+                        } label: {
+                            RouteCard(route: route, status: routeStatus(for: route), ttcRed: ttcRed)
+                        }
+                        .buttonStyle(.plain)
+                            .listRowSeparator(.hidden)
+                            .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
+                            .listRowBackground(Color.clear)
                     }
-                    .buttonStyle(.plain)
-                        .listRowSeparator(.hidden)
-                        .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
-                        .listRowBackground(Color.clear)
+                    .onDelete(perform: deleteRoutes)
                 }
-                .onDelete(perform: deleteRoutes)
-            }
-            .listStyle(.plain)
-            .scrollDisabled(true)
-            .frame(height: CGFloat(savedRoutes.count) * 108)
+                .listStyle(.plain)
+                .scrollDisabled(true)
+                .frame(height: CGFloat(savedRoutes.count) * 108)
 
-            Text("Swipe left to remove routes")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                Text("Swipe left to remove routes")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 
@@ -400,6 +438,36 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
+}
+
+struct EmptyRoutesView: View {
+    let ttcRed: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Circle()
+                .fill(ttcRed.opacity(0.12))
+                .frame(width: 48, height: 48)
+                .overlay {
+                    Image(systemName: "plus")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(ttcRed)
+                }
+
+            Text("No saved routes yet")
+                .font(.system(.headline, design: .rounded))
+                .foregroundStyle(.primary)
+
+            Text("Add a subway, bus, or streetcar route above to start tracking TTC alerts.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(.white)
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .shadow(color: .black.opacity(0.06), radius: 12, x: 0, y: 5)
+    }
 }
 
 struct RouteCard: View {
