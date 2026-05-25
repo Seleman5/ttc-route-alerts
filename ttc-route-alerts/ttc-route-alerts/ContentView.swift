@@ -7,136 +7,6 @@
 
 import SwiftUI
 
-enum RouteType: String, CaseIterable, Codable, Identifiable {
-    case subway = "Subway"
-    case bus = "Bus"
-    case streetcar = "Streetcar"
-
-    var id: String {
-        rawValue
-    }
-}
-
-enum AlertSeverity: String {
-    case normal = "Normal"
-    case minor = "Minor Alert"
-    case major = "Major Alert"
-
-    var priority: Int {
-        switch self {
-        case .normal:
-            return 0
-        case .minor:
-            return 1
-        case .major:
-            return 2
-        }
-    }
-
-    var textColor: Color {
-        switch self {
-        case .normal:
-            return .green
-        case .minor:
-            return .orange
-        case .major:
-            return .red
-        }
-    }
-
-    var backgroundColor: Color {
-        switch self {
-        case .normal:
-            return Color.green.opacity(0.14)
-        case .minor:
-            return Color.orange.opacity(0.16)
-        case .major:
-            return Color.red.opacity(0.12)
-        }
-    }
-
-    static func forAlertText(_ alertText: String) -> AlertSeverity {
-        let lowercaseAlert = alertText.lowercased()
-        let majorKeywords = ["suspended", "closure", "shuttle bus", "no service"]
-        let minorKeywords = ["delay", "detour", "elevator", "escalator", "unavailable"]
-
-        if majorKeywords.contains(where: { lowercaseAlert.contains($0) }) {
-            return .major
-        }
-
-        if minorKeywords.contains(where: { lowercaseAlert.contains($0) }) {
-            return .minor
-        }
-
-        return .minor
-    }
-
-    static func strongestSeverity(in alerts: [String]) -> AlertSeverity {
-        guard !alerts.isEmpty else {
-            return .normal
-        }
-
-        var strongestSeverity = AlertSeverity.minor
-
-        for alert in alerts {
-            let alertSeverity = AlertSeverity.forAlertText(alert)
-
-            if alertSeverity.priority > strongestSeverity.priority {
-                strongestSeverity = alertSeverity
-            }
-        }
-
-        return strongestSeverity
-    }
-}
-
-struct TTCAlertRoute: Identifiable, Codable {
-    let id: UUID
-    let name: String
-    let status: String
-    let routeType: RouteType?
-    let routeNumber: String?
-    let nickname: String?
-
-    init(
-        id: UUID = UUID(),
-        name: String,
-        status: String,
-        routeType: RouteType? = nil,
-        routeNumber: String? = nil,
-        nickname: String? = nil
-    ) {
-        self.id = id
-        self.name = name
-        self.status = status
-        self.routeType = routeType
-        self.routeNumber = routeNumber
-        self.nickname = nickname
-    }
-
-    var displayName: String {
-        guard let routeType, let routeNumber, !routeNumber.isEmpty else {
-            return name
-        }
-
-        let typeLabel: String
-
-        if routeType == .subway {
-            typeLabel = "Subway Line"
-        } else {
-            typeLabel = routeType.rawValue
-        }
-
-        let routeTitle = "\(typeLabel) \(routeNumber)"
-
-        if let nickname, !nickname.isEmpty {
-            return "\(routeTitle) - \(nickname)"
-        } else {
-            return routeTitle
-        }
-    }
-}
-
 struct ContentView: View {
     @State private var selectedRouteType = RouteType.subway
     @State private var routeNumberInput = ""
@@ -376,7 +246,7 @@ struct ContentView: View {
         savedRoutes.contains { savedRoute in
             let sameDisplayName = savedRoute.displayName.lowercased() == newRoute.displayName.lowercased()
             let sameRouteType = savedRoute.routeType == nil || savedRoute.routeType == newRoute.routeType
-            let sameRouteNumber = routeNumberForMatching(savedRoute) == routeNumberForMatching(newRoute)
+            let sameRouteNumber = RouteMatcher.routeNumber(for: savedRoute) == RouteMatcher.routeNumber(for: newRoute)
 
             return sameDisplayName || (sameRouteType && sameRouteNumber)
         }
@@ -409,81 +279,12 @@ struct ContentView: View {
 
     func matchingAlerts(for route: TTCAlertRoute) -> [String] {
         return ttcAlerts.filter { alert in
-            matchesAlert(alert, for: route)
+            RouteMatcher.matches(alert, route: route)
         }
     }
 
     func routeSeverity(for route: TTCAlertRoute) -> AlertSeverity {
         AlertSeverity.strongestSeverity(in: matchingAlerts(for: route))
-    }
-
-    func matchesAlert(_ alert: String, for route: TTCAlertRoute) -> Bool {
-        let lowercaseAlert = alert.lowercased()
-        let alertWords = words(in: lowercaseAlert)
-
-        // First, match the saved route number as its own word so 34 does not match 134 or 934.
-        if let routeNumber = routeNumberForMatching(route), alertWords.contains(routeNumber) {
-            return true
-        }
-
-        // Next, support route-type phrases that TTC alert text commonly uses.
-        if let routeNumber = routeNumberForMatching(route), let routeType = route.routeType {
-            if routeType == .subway, lowercaseAlert.contains("line \(routeNumber)") {
-                return true
-            }
-
-            if routeType != .subway, lowercaseAlert.contains("route \(routeNumber)") {
-                return true
-            }
-        }
-
-        // Subway Line 1 is often described by either its number or its common line name.
-        if isSubwayLineOne(route) {
-            let subwayLineOneNames = ["line 1", "yonge-university", "yonge university"]
-
-            if subwayLineOneNames.contains(where: { lowercaseAlert.contains($0) }) {
-                return true
-            }
-        }
-
-        // Nicknames are helpful, but they are a fallback because many route names overlap.
-        if let nickname = route.nickname?.lowercased(), !nickname.isEmpty {
-            return lowercaseAlert.contains(nickname)
-        }
-
-        return false
-    }
-
-    func routeNumberForMatching(_ route: TTCAlertRoute) -> String? {
-        if let routeNumber = route.routeNumber?.lowercased(), !routeNumber.isEmpty {
-            return firstNumber(in: routeNumber) ?? routeNumber
-        }
-
-        return firstNumber(in: route.name.lowercased())
-    }
-
-    func isSubwayLineOne(_ route: TTCAlertRoute) -> Bool {
-        let routeNumber = routeNumberForMatching(route)
-        let routeName = route.name.lowercased()
-        let routeNickname = route.nickname?.lowercased()
-
-        return routeNumber == "1"
-            && (route.routeType == .subway
-                || routeName.contains("line 1")
-                || routeNickname == "yonge-university"
-                || routeNickname == "yonge university")
-    }
-
-    func firstNumber(in text: String) -> String? {
-        text
-            .components(separatedBy: CharacterSet.decimalDigits.inverted)
-            .first { !$0.isEmpty }
-    }
-
-    func words(in text: String) -> [String] {
-        text
-            .components(separatedBy: CharacterSet.alphanumerics.inverted)
-            .filter { !$0.isEmpty }
     }
 
     static func loadRoutes() -> [TTCAlertRoute] {
