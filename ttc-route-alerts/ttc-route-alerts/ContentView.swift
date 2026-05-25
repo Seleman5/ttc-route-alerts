@@ -580,9 +580,7 @@ struct RouteDetailView: View {
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(alerts, id: \.self) { alert in
-                    Text(alert)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    AlertCard(alertText: alert, ttcRed: ttcRed)
                 }
             }
         }
@@ -591,6 +589,28 @@ struct RouteDetailView: View {
         .background(.white)
         .clipShape(RoundedRectangle(cornerRadius: 18))
         .shadow(color: .black.opacity(0.06), radius: 12, x: 0, y: 5)
+    }
+}
+
+struct AlertCard: View {
+    let alertText: String
+    let ttcRed: Color
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            RoundedRectangle(cornerRadius: 3)
+                .fill(ttcRed)
+                .frame(width: 5)
+
+            Text(alertText)
+                .font(.subheadline)
+                .foregroundStyle(.primary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(Color(.systemGray6))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }
 
