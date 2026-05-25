@@ -486,14 +486,7 @@ struct ContentView: View {
 
     func matchingAlerts(for route: TTCAlertRoute) -> [String] {
         return ttcAlerts.filter { alert in
-            let didMatch = RouteMatcher.matches(alert, route: route)
-
-            print("Route matching debug")
-            print("Route checked: \(route.displayName)")
-            print("Alert checked: \(alert)")
-            print("Match succeeded: \(didMatch)")
-
-            return didMatch
+            RouteMatcher.matches(alert, route: route)
         }
     }
 

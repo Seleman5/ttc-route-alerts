@@ -60,7 +60,6 @@ struct TTCAlertsService {
             }
 
             let alert = entity.alert
-            logAlertMetadata(alert, entityID: entity.id)
 
             if alert.hasHeaderText {
                 alertTexts.append(contentsOf: texts(from: alert.headerText))
@@ -72,37 +71,6 @@ struct TTCAlertsService {
         }
 
         return alertTexts
-    }
-
-    func logAlertMetadata(_ alert: TransitRealtime_Alert, entityID: String) {
-        print("TTC alert metadata debug")
-        print("Entity ID: \(entityID)")
-
-        if alert.hasHeaderText {
-            print("Header text: \(texts(from: alert.headerText).joined(separator: " | "))")
-        } else {
-            print("Header text: none")
-        }
-
-        if alert.hasDescriptionText {
-            print("Description text: \(texts(from: alert.descriptionText).joined(separator: " | "))")
-        } else {
-            print("Description text: none")
-        }
-
-        if alert.informedEntity.isEmpty {
-            print("Informed entities: none")
-        }
-
-        for (index, informedEntity) in alert.informedEntity.enumerated() {
-            let routeID = informedEntity.hasRouteID ? informedEntity.routeID : "none"
-            let stopID = informedEntity.hasStopID ? informedEntity.stopID : "none"
-            let tripRouteID = informedEntity.hasTrip && informedEntity.trip.hasRouteID ? informedEntity.trip.routeID : "none"
-
-            print("Informed entity \(index + 1) routeID: \(routeID)")
-            print("Informed entity \(index + 1) stopID: \(stopID)")
-            print("Informed entity \(index + 1) trip routeID: \(tripRouteID)")
-        }
     }
 
     func texts(from translatedString: TransitRealtime_TranslatedString) -> [String] {
