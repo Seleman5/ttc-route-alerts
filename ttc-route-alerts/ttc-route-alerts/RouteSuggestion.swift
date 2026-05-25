@@ -44,6 +44,12 @@ struct SuggestedRoute: Identifiable {
 }
 
 enum RouteSuggestion {
+    static func isSuggestionNickname(_ nickname: String) -> Bool {
+        suggestedRoutes.contains { suggestion in
+            suggestion.nickname.lowercased() == nickname.lowercased()
+        }
+    }
+
     static func matchingSuggestion(for input: String, selectedRouteType: RouteType) -> SuggestedRoute? {
         let cleanedInput = input.trimmingCharacters(in: .whitespacesAndNewlines)
         let normalizedInput = normalizedRouteInput(cleanedInput)
