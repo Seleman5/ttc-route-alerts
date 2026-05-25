@@ -17,6 +17,79 @@ enum RouteType: String, CaseIterable, Codable, Identifiable {
     }
 }
 
+enum AlertSeverity: String {
+    case normal = "Normal"
+    case minor = "Minor Alert"
+    case major = "Major Alert"
+
+    var priority: Int {
+        switch self {
+        case .normal:
+            return 0
+        case .minor:
+            return 1
+        case .major:
+            return 2
+        }
+    }
+
+    var textColor: Color {
+        switch self {
+        case .normal:
+            return .green
+        case .minor:
+            return .orange
+        case .major:
+            return .red
+        }
+    }
+
+    var backgroundColor: Color {
+        switch self {
+        case .normal:
+            return Color.green.opacity(0.14)
+        case .minor:
+            return Color.orange.opacity(0.16)
+        case .major:
+            return Color.red.opacity(0.12)
+        }
+    }
+
+    static func forAlertText(_ alertText: String) -> AlertSeverity {
+        let lowercaseAlert = alertText.lowercased()
+        let majorKeywords = ["suspended", "closure", "shuttle bus", "no service"]
+        let minorKeywords = ["delay", "detour", "elevator", "escalator", "unavailable"]
+
+        if majorKeywords.contains(where: { lowercaseAlert.contains($0) }) {
+            return .major
+        }
+
+        if minorKeywords.contains(where: { lowercaseAlert.contains($0) }) {
+            return .minor
+        }
+
+        return .minor
+    }
+
+    static func strongestSeverity(in alerts: [String]) -> AlertSeverity {
+        guard !alerts.isEmpty else {
+            return .normal
+        }
+
+        var strongestSeverity = AlertSeverity.minor
+
+        for alert in alerts {
+            let alertSeverity = AlertSeverity.forAlertText(alert)
+
+            if alertSeverity.priority > strongestSeverity.priority {
+                strongestSeverity = alertSeverity
+            }
+        }
+
+        return strongestSeverity
+    }
+}
+
 struct TTCAlertRoute: Identifiable, Codable {
     let id: UUID
     let name: String
@@ -243,9 +316,9 @@ struct ContentView: View {
                 List {
                     ForEach(savedRoutes) { route in
                         NavigationLink {
-                            RouteDetailView(route: route, status: routeStatus(for: route), alerts: matchingAlerts(for: route), lastUpdatedText: lastUpdatedText, ttcRed: ttcRed, appBackground: appBackground)
+                            RouteDetailView(route: route, severity: routeSeverity(for: route), alerts: matchingAlerts(for: route), lastUpdatedText: lastUpdatedText, ttcRed: ttcRed, appBackground: appBackground)
                         } label: {
-                            RouteCard(route: route, status: routeStatus(for: route), ttcRed: ttcRed)
+                            RouteCard(route: route, severity: routeSeverity(for: route), ttcRed: ttcRed)
                         }
                         .buttonStyle(.plain)
                             .listRowSeparator(.hidden)
@@ -351,12 +424,8 @@ struct ContentView: View {
         }
     }
 
-    func routeStatus(for route: TTCAlertRoute) -> String {
-        if matchingAlerts(for: route).isEmpty {
-            return "No major issues"
-        } else {
-            return "Service Alert"
-        }
+    func routeSeverity(for route: TTCAlertRoute) -> AlertSeverity {
+        AlertSeverity.strongestSeverity(in: matchingAlerts(for: route))
     }
 
     func searchTerms(for route: TTCAlertRoute) -> [String] {
@@ -472,7 +541,7 @@ struct EmptyRoutesView: View {
 
 struct RouteCard: View {
     let route: TTCAlertRoute
-    let status: String
+    let severity: AlertSeverity
     let ttcRed: Color
 
     var body: some View {
@@ -491,7 +560,7 @@ struct RouteCard: View {
                     .font(.system(.headline, design: .rounded))
                     .foregroundStyle(.primary)
 
-                StatusBadge(status: status)
+                StatusBadge(severity: severity)
             }
 
             Spacer()
@@ -505,7 +574,7 @@ struct RouteCard: View {
 
 struct RouteDetailView: View {
     let route: TTCAlertRoute
-    let status: String
+    let severity: AlertSeverity
     let alerts: [String]
     let lastUpdatedText: String
     let ttcRed: Color
@@ -544,7 +613,7 @@ struct RouteDetailView: View {
                 .font(.system(size: 30, weight: .bold, design: .rounded))
                 .foregroundStyle(.primary)
 
-            StatusBadge(status: status)
+            StatusBadge(severity: severity)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(18)
@@ -580,7 +649,7 @@ struct RouteDetailView: View {
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(alerts, id: \.self) { alert in
-                    AlertCard(alertText: alert, ttcRed: ttcRed)
+                    AlertCard(alertText: alert, severity: AlertSeverity.forAlertText(alert))
                 }
             }
         }
@@ -594,57 +663,41 @@ struct RouteDetailView: View {
 
 struct AlertCard: View {
     let alertText: String
-    let ttcRed: Color
+    let severity: AlertSeverity
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             RoundedRectangle(cornerRadius: 3)
-                .fill(ttcRed)
+                .fill(severity.textColor)
                 .frame(width: 5)
 
-            Text(alertText)
-                .font(.subheadline)
-                .foregroundStyle(.primary)
-                .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 10) {
+                StatusBadge(severity: severity)
+
+                Text(alertText)
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
-        .background(Color(.systemGray6))
+        .background(severity.backgroundColor.opacity(0.55))
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }
 
 struct StatusBadge: View {
-    let status: String
+    let severity: AlertSeverity
 
     var body: some View {
-        Text(status)
+        Text(severity.rawValue)
             .font(.caption)
             .fontWeight(.semibold)
-            .foregroundStyle(textColor)
+            .foregroundStyle(severity.textColor)
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
-            .background(backgroundColor)
+            .background(severity.backgroundColor)
             .clipShape(Capsule())
-    }
-
-    var textColor: Color {
-        if status.contains("Service Alert") {
-            return .red
-        } else if status.contains("No major") {
-            return .green
-        } else {
-            return .secondary
-        }
-    }
-
-    var backgroundColor: Color {
-        if status.contains("Service Alert") {
-            return Color.red.opacity(0.12)
-        } else if status.contains("No major") {
-            return Color.green.opacity(0.14)
-        } else {
-            return Color(.systemGray6)
-        }
     }
 }
