@@ -8,6 +8,19 @@ TTC provides general service alerts, but commuters usually only care about route
 2. Open the project in Xcode
 3. Build and run on an iPhone simulator or device
 
+## App Icon Setup
+
+The project includes a temporary TTC-inspired app icon in:
+
+`ttc-route-alerts/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png`
+
+The current Xcode asset catalog uses the newer iOS universal app icon format. Replace the placeholder with a production 1024x1024 PNG and keep it assigned in `AppIcon.appiconset/Contents.json` for the Any, Dark, and Tinted appearances. The image should be square, opaque, and should not include the official TTC logo or any other copyrighted transit mark.
+
+For older or manually expanded icon catalogs, iOS app icons are commonly needed at these point sizes and scales:
+
+- iPhone notification/settings/spotlight sizes: 20, 29, 40, and 60 pt at @2x/@3x
+- iPad notification/settings/spotlight/app sizes: 20, 29, 40, 76, and 83.5 pt at the required iPad scales
+- App Store marketing icon: 1024x1024 px
 
 # TTC Route Alerts
 
