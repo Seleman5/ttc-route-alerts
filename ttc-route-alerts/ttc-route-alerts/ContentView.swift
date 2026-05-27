@@ -12,7 +12,7 @@ struct ContentView: View {
     @State private var routeNumberInput = ""
     @State private var routeNicknameInput = ""
     @State private var savedRoutes = ContentView.loadRoutes()
-    @State private var ttcAlerts: [String] = []
+    @State private var ttcAlerts: [TTCAlert] = []
     @State private var lastUpdatedDate = ContentView.loadLastUpdatedDate()
     @State private var isRefreshing = false
     @State private var refreshErrorMessage: String?
@@ -358,6 +358,7 @@ struct ContentView: View {
             id: id,
             name: matchingSuggestion.routeNumber,
             status: status,
+            routeID: matchingSuggestion.routeID,
             routeType: matchingSuggestion.routeType,
             routeNumber: matchingSuggestion.routeNumber,
             nickname: nickname
@@ -484,14 +485,15 @@ struct ContentView: View {
         isRefreshing = false
     }
 
-    func matchingAlerts(for route: TTCAlertRoute) -> [String] {
+    func matchingAlerts(for route: TTCAlertRoute) -> [TTCAlert] {
         return ttcAlerts.filter { alert in
             RouteMatcher.matches(alert, route: route)
         }
     }
 
     func routeSeverity(for route: TTCAlertRoute) -> AlertSeverity {
-        AlertSeverity.strongestSeverity(in: matchingAlerts(for: route))
+        let alertTexts = matchingAlerts(for: route).map(\.text)
+        return AlertSeverity.strongestSeverity(in: alertTexts)
     }
 
     static func loadRoutes() -> [TTCAlertRoute] {
@@ -594,7 +596,7 @@ struct RouteCard: View {
 struct RouteDetailView: View {
     let route: TTCAlertRoute
     let severity: AlertSeverity
-    let alerts: [String]
+    let alerts: [TTCAlert]
     let lastUpdatedText: String
     let ttcRed: Color
     let appBackground: Color
@@ -668,7 +670,7 @@ struct RouteDetailView: View {
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(alerts, id: \.self) { alert in
-                    AlertCard(alertText: alert, severity: AlertSeverity.forAlertText(alert))
+                    AlertCard(alertText: alert.text, severity: AlertSeverity.forAlertText(alert.text))
                 }
             }
         }

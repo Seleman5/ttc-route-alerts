@@ -19,6 +19,7 @@ struct TTCAlertRoute: Identifiable, Codable {
     let id: UUID
     let name: String
     let status: String
+    let routeID: String?
     let routeType: RouteType?
     let routeNumber: String?
     let nickname: String?
@@ -27,6 +28,7 @@ struct TTCAlertRoute: Identifiable, Codable {
         id: UUID = UUID(),
         name: String,
         status: String,
+        routeID: String? = nil,
         routeType: RouteType? = nil,
         routeNumber: String? = nil,
         nickname: String? = nil
@@ -34,6 +36,7 @@ struct TTCAlertRoute: Identifiable, Codable {
         self.id = id
         self.name = name
         self.status = status
+        self.routeID = routeID
         self.routeType = routeType
         self.routeNumber = routeNumber
         self.nickname = nickname

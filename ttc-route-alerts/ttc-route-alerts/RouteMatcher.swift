@@ -6,12 +6,22 @@
 import Foundation
 
 struct RouteMatcher {
-    static func matches(_ alert: String, route: TTCAlertRoute) -> Bool {
-        let lowercaseAlert = alert.lowercased()
+    static func matches(_ alert: TTCAlert, route: TTCAlertRoute) -> Bool {
+        if let savedRouteID = route.routeID?.lowercased(),
+           !savedRouteID.isEmpty,
+           alert.routeIDs.contains(where: { $0.lowercased() == savedRouteID }) {
+            return true
+        }
+
+        return matchesText(alert.text, route: route)
+    }
+
+    private static func matchesText(_ alertText: String, route: TTCAlertRoute) -> Bool {
+        let lowercaseAlert = alertText.lowercased()
         let alertWords = words(in: lowercaseAlert)
         let savedRouteNumber = routeNumber(for: route)
 
-        // 1. Route number matching always runs first.
+        // 1. Route number matching is the first text fallback.
         // The number must be a full token so route 39 does not match 939.
         if let savedRouteNumber, alertWords.contains(savedRouteNumber) {
             return true
