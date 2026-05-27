@@ -15,7 +15,7 @@ struct ContentView: View {
     @State private var routeNumberInput = ""
     @State private var routeNicknameInput = ""
     @State private var savedRoutes = ContentView.loadRoutes()
-    @State private var ttcAlerts: [TTCAlert] = []
+    @State private var ttcAlerts: [TTCAlert] = ContentView.loadCachedAlerts()
     @State private var lastUpdatedDate = ContentView.loadLastUpdatedDate()
     @State private var isRefreshing = false
     @State private var refreshErrorMessage: String?
@@ -26,6 +26,7 @@ struct ContentView: View {
     @ScaledMetric private var routeRowHeight = 108
 
     static let savedRoutesKey = "savedRoutes"
+    static let cachedAlertsKey = "cachedTTCAlerts"
     static let lastUpdatedKey = "lastUpdated"
     static let starterRoutes = [
         TTCAlertRoute(name: "1", status: "No major issues", routeType: .subway, routeNumber: "1", nickname: "Yonge-University"),
@@ -114,7 +115,7 @@ struct ContentView: View {
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("Last updated: \(lastUpdatedText)")
+                Text("Last successful update: \(lastUpdatedText)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
@@ -134,7 +135,7 @@ struct ContentView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text(refreshErrorMessage)
                         .font(.caption)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(.orange)
 
                     Button {
                         Task {
@@ -155,7 +156,7 @@ struct ContentView: View {
                 }
                 .padding(12)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.red.opacity(0.08))
+                .background(Color.orange.opacity(0.10))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }
         }
@@ -477,13 +478,14 @@ struct ContentView: View {
         do {
             ttcAlerts = try await TTCAlertsService().fetchAlertsFeed()
             lastUpdatedDate = Date()
+            saveCachedAlerts()
             saveLastUpdatedDate()
 
             if shouldSendNotifications {
                 await sendNotificationsForAlertingRoutesIfNeeded()
             }
         } catch {
-            refreshErrorMessage = "Could not refresh TTC alerts. Please try again."
+            refreshErrorMessage = cachedAlertsMessage
             print("Could not refresh TTC alerts: \(error.localizedDescription)")
         }
 
@@ -579,12 +581,41 @@ struct ContentView: View {
         UserDefaults.standard.object(forKey: lastUpdatedKey) as? Date
     }
 
+    static func loadCachedAlerts() -> [TTCAlert] {
+        guard let savedData = UserDefaults.standard.data(forKey: cachedAlertsKey) else {
+            return []
+        }
+
+        do {
+            return try JSONDecoder().decode([TTCAlert].self, from: savedData)
+        } catch {
+            return []
+        }
+    }
+
+    var cachedAlertsMessage: String {
+        if ttcAlerts.isEmpty {
+            return "Couldn't refresh. No saved alerts yet."
+        } else {
+            return "Couldn't refresh. Showing last saved alerts."
+        }
+    }
+
     func saveRoutes() {
         do {
             let encodedRoutes = try JSONEncoder().encode(savedRoutes)
             UserDefaults.standard.set(encodedRoutes, forKey: ContentView.savedRoutesKey)
         } catch {
             print("Could not save routes")
+        }
+    }
+
+    func saveCachedAlerts() {
+        do {
+            let encodedAlerts = try JSONEncoder().encode(ttcAlerts)
+            UserDefaults.standard.set(encodedAlerts, forKey: ContentView.cachedAlertsKey)
+        } catch {
+            print("Could not save cached alerts")
         }
     }
 
@@ -716,7 +747,7 @@ struct RouteDetailView: View {
 
     var lastUpdatedSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Last Updated")
+            Text("Last Successful Update")
                 .font(.headline)
 
             Text(lastUpdatedText)

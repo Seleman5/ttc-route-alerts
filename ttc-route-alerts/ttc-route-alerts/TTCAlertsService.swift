@@ -8,7 +8,7 @@
 import Foundation
 import SwiftProtobuf
 
-struct TTCAlert: Hashable {
+struct TTCAlert: Codable, Hashable {
     let text: String
     let routeIDs: [String]
 }
