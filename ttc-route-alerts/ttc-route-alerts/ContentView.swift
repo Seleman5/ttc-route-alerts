@@ -23,6 +23,7 @@ struct ContentView: View {
     @State private var editingRouteID: UUID?
     @State private var sentNotificationKeys: Set<String> = []
     @State private var autoRefreshTask: Task<Void, Never>?
+    @ScaledMetric private var routeRowHeight = 108
 
     static let savedRoutesKey = "savedRoutes"
     static let lastUpdatedKey = "lastUpdated"
@@ -32,7 +33,7 @@ struct ContentView: View {
     ]
 
     let ttcRed = Color(red: 0.85, green: 0.06, blue: 0.10)
-    let appBackground = Color(red: 0.96, green: 0.96, blue: 0.95)
+    let appBackground = Color(.systemGroupedBackground)
 
     var body: some View {
         NavigationStack {
@@ -61,6 +62,7 @@ struct ContentView: View {
                         Image(systemName: "gearshape")
                     }
                     .accessibilityLabel("Settings")
+                    .accessibilityHint("Opens notification and refresh settings.")
                 }
 
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -73,6 +75,7 @@ struct ContentView: View {
                     }
                     .disabled(isRefreshing)
                     .accessibilityLabel(isRefreshing ? "Refreshing alerts" : "Refresh alerts")
+                    .accessibilityHint("Fetches the latest TTC alerts for your saved routes.")
                 }
             }
         }
@@ -102,7 +105,7 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 8) {
                 Text("TTC Route Alerts")
-                    .font(.system(size: 34, weight: .bold, design: .rounded))
+                    .font(.system(.largeTitle, design: .rounded).weight(.bold))
                     .foregroundStyle(.primary)
 
                 Text("Track only the TTC routes you care about.")
@@ -208,6 +211,8 @@ struct ContentView: View {
             .foregroundStyle(.white)
             .background(ttcRed)
             .clipShape(RoundedRectangle(cornerRadius: 12))
+            .accessibilityLabel(editingRouteID == nil ? "Add route" : "Save changes")
+            .accessibilityHint(editingRouteID == nil ? "Adds the selected TTC route to your saved routes." : "Saves changes to this TTC route.")
 
             if editingRouteID != nil {
                 Button {
@@ -226,7 +231,7 @@ struct ContentView: View {
             }
         }
         .padding(16)
-        .background(.white)
+        .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 18))
         .shadow(color: .black.opacity(0.06), radius: 14, x: 0, y: 6)
     }
@@ -284,6 +289,7 @@ struct ContentView: View {
                             RouteCard(route: route, severity: routeSeverity(for: route), ttcRed: ttcRed)
                         }
                         .buttonStyle(.plain)
+                            .accessibilityHint("Opens details for \(route.displayName).")
                             .listRowSeparator(.hidden)
                             .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
                             .listRowBackground(Color.clear)
@@ -293,6 +299,8 @@ struct ContentView: View {
                                 } label: {
                                     Label("Delete", systemImage: "trash")
                                 }
+                                .accessibilityLabel("Delete \(route.displayName)")
+                                .accessibilityHint("Removes this route from your saved routes.")
 
                                 Button {
                                     startEditing(route)
@@ -300,13 +308,15 @@ struct ContentView: View {
                                     Label("Edit", systemImage: "pencil")
                                 }
                                 .tint(ttcRed)
+                                .accessibilityLabel("Edit \(route.displayName)")
+                                .accessibilityHint("Loads this route into the edit form.")
                             }
                     }
                     .onDelete(perform: deleteRoutes)
                 }
                 .listStyle(.plain)
                 .scrollDisabled(true)
-                .frame(height: CGFloat(savedRoutes.count) * 108)
+                .frame(height: CGFloat(savedRoutes.count) * routeRowHeight)
 
                 Text("Swipe left to edit or remove routes")
                     .font(.caption)
@@ -611,7 +621,7 @@ struct EmptyRoutesView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(.white)
+        .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 18))
         .shadow(color: .black.opacity(0.06), radius: 12, x: 0, y: 5)
     }
@@ -644,9 +654,11 @@ struct RouteCard: View {
             Spacer()
         }
         .padding(16)
-        .background(.white)
+        .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 18))
         .shadow(color: .black.opacity(0.06), radius: 12, x: 0, y: 5)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(route.displayName), \(severity.rawValue)")
     }
 }
 
@@ -688,16 +700,18 @@ struct RouteDetailView: View {
                 }
 
             Text(route.displayName)
-                .font(.system(size: 30, weight: .bold, design: .rounded))
+                .font(.system(.title, design: .rounded).weight(.bold))
                 .foregroundStyle(.primary)
 
             StatusBadge(severity: severity)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(18)
-        .background(.white)
+        .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 18))
         .shadow(color: .black.opacity(0.06), radius: 14, x: 0, y: 6)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(route.displayName), \(severity.rawValue)")
     }
 
     var lastUpdatedSection: some View {
@@ -711,7 +725,7 @@ struct RouteDetailView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(.white)
+        .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 18))
         .shadow(color: .black.opacity(0.06), radius: 12, x: 0, y: 5)
     }
@@ -733,7 +747,7 @@ struct RouteDetailView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(.white)
+        .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 18))
         .shadow(color: .black.opacity(0.06), radius: 12, x: 0, y: 5)
     }
@@ -762,6 +776,8 @@ struct AlertCard: View {
         .padding(14)
         .background(severity.backgroundColor.opacity(0.55))
         .clipShape(RoundedRectangle(cornerRadius: 12))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(severity.rawValue): \(alertText)")
     }
 }
 
