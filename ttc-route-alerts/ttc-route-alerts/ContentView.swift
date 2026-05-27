@@ -9,6 +9,8 @@ import SwiftUI
 
 struct ContentView: View {
     @AppStorage("notificationsEnabled") private var notificationsEnabled = false
+    @AppStorage("refreshPreference") private var refreshPreference = RefreshPreference.manualOnly.rawValue
+    @Environment(\.scenePhase) private var scenePhase
     @State private var selectedRouteType = RouteType.subway
     @State private var routeNumberInput = ""
     @State private var routeNicknameInput = ""
@@ -20,6 +22,7 @@ struct ContentView: View {
     @State private var routeFormErrorMessage: String?
     @State private var editingRouteID: UUID?
     @State private var sentNotificationKeys: Set<String> = []
+    @State private var autoRefreshTask: Task<Void, Never>?
 
     static let savedRoutesKey = "savedRoutes"
     static let lastUpdatedKey = "lastUpdated"
@@ -76,6 +79,22 @@ struct ContentView: View {
         .tint(ttcRed)
         .task {
             await refreshAlerts(shouldSendNotifications: false)
+        }
+        .onAppear {
+            startAutoRefreshIfNeeded()
+        }
+        .onDisappear {
+            stopAutoRefresh()
+        }
+        .onChange(of: refreshPreference) { _, _ in
+            startAutoRefreshIfNeeded()
+        }
+        .onChange(of: scenePhase) { _, newScenePhase in
+            if newScenePhase == .active {
+                startAutoRefreshIfNeeded()
+            } else {
+                stopAutoRefresh()
+            }
         }
     }
 
@@ -459,6 +478,35 @@ struct ContentView: View {
         }
 
         isRefreshing = false
+    }
+
+    func startAutoRefreshIfNeeded() {
+        stopAutoRefresh()
+
+        guard scenePhase == .active,
+              let selectedPreference = RefreshPreference(rawValue: refreshPreference),
+              let refreshIntervalInSeconds = selectedPreference.refreshIntervalInSeconds else {
+            return
+        }
+
+        let refreshIntervalInNanoseconds = UInt64(refreshIntervalInSeconds * 1_000_000_000)
+
+        autoRefreshTask = Task {
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: refreshIntervalInNanoseconds)
+
+                if Task.isCancelled {
+                    return
+                }
+
+                await refreshAlerts(shouldSendNotifications: true)
+            }
+        }
+    }
+
+    func stopAutoRefresh() {
+        autoRefreshTask?.cancel()
+        autoRefreshTask = nil
     }
 
     func sendNotificationsForAlertingRoutesIfNeeded() async {

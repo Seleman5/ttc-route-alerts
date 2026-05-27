@@ -69,7 +69,7 @@ struct SettingsView: View {
             }
             .pickerStyle(.menu)
 
-            Text("Automatic refresh is not active yet.")
+            Text("Automatic refresh runs only while the app is open.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -136,6 +136,17 @@ enum RefreshPreference: String, CaseIterable, Identifiable {
 
     var id: String {
         rawValue
+    }
+
+    var refreshIntervalInSeconds: Double? {
+        switch self {
+        case .manualOnly:
+            return nil
+        case .everyFiveMinutes:
+            return 5 * 60
+        case .everyFifteenMinutes:
+            return 15 * 60
+        }
     }
 }
 
