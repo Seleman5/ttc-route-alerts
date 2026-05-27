@@ -9,6 +9,10 @@ import SwiftUI
 
 @main
 struct ttc_route_alertsApp: App {
+    init() {
+        RouteAlertNotificationManager.configureForegroundNotifications()
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()

@@ -8,6 +8,8 @@ import SwiftUI
 struct SettingsView: View {
     @AppStorage("notificationsEnabled") private var notificationsEnabled = false
     @AppStorage("refreshPreference") private var refreshPreference = RefreshPreference.manualOnly.rawValue
+    @State private var notificationMessage: String?
+    @State private var isRevertingNotificationsToggle = false
 
     let ttcRed: Color
     let appBackground: Color
@@ -29,6 +31,9 @@ struct SettingsView: View {
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
         .tint(ttcRed)
+        .onChange(of: notificationsEnabled) { _, isEnabled in
+            handleNotificationsToggle(isEnabled)
+        }
     }
 
     var notificationsSection: some View {
@@ -38,9 +43,15 @@ struct SettingsView: View {
 
             Toggle("Route alert notifications", isOn: $notificationsEnabled)
 
-            Text("Notification permission will be added in a future update.")
+            Text("When enabled, this app can notify you after you refresh and one of your saved routes has an alert.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+
+            if let notificationMessage {
+                Text(notificationMessage)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .settingsCardStyle()
     }
@@ -89,6 +100,31 @@ struct SettingsView: View {
             return "\(version) (\(build))"
         } else {
             return version ?? build
+        }
+    }
+
+    func handleNotificationsToggle(_ isEnabled: Bool) {
+        if isRevertingNotificationsToggle {
+            isRevertingNotificationsToggle = false
+            return
+        }
+
+        if isEnabled {
+            Task {
+                let permissionGranted = await RouteAlertNotificationManager.requestPermission()
+
+                await MainActor.run {
+                    if permissionGranted {
+                        notificationMessage = "Notifications are on."
+                    } else {
+                        isRevertingNotificationsToggle = true
+                        notificationsEnabled = false
+                        notificationMessage = "Notification permission was denied. You can enable it later in iOS Settings."
+                    }
+                }
+            }
+        } else {
+            notificationMessage = "Notifications are off."
         }
     }
 }

@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct ContentView: View {
+    @AppStorage("notificationsEnabled") private var notificationsEnabled = false
     @State private var selectedRouteType = RouteType.subway
     @State private var routeNumberInput = ""
     @State private var routeNicknameInput = ""
@@ -18,6 +19,7 @@ struct ContentView: View {
     @State private var refreshErrorMessage: String?
     @State private var routeFormErrorMessage: String?
     @State private var editingRouteID: UUID?
+    @State private var sentNotificationKeys: Set<String> = []
 
     static let savedRoutesKey = "savedRoutes"
     static let lastUpdatedKey = "lastUpdated"
@@ -44,7 +46,7 @@ struct ContentView: View {
                     .padding(20)
                 }
                 .refreshable {
-                    await refreshAlerts()
+                    await refreshAlerts(shouldSendNotifications: true)
                 }
             }
             .navigationTitle("My Routes")
@@ -61,7 +63,7 @@ struct ContentView: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         Task {
-                            await refreshAlerts()
+                            await refreshAlerts(shouldSendNotifications: true)
                         }
                     } label: {
                         Image(systemName: "arrow.clockwise")
@@ -73,7 +75,7 @@ struct ContentView: View {
         }
         .tint(ttcRed)
         .task {
-            await refreshAlerts()
+            await refreshAlerts(shouldSendNotifications: false)
         }
     }
 
@@ -114,7 +116,7 @@ struct ContentView: View {
 
                     Button {
                         Task {
-                            await refreshAlerts()
+                            await refreshAlerts(shouldSendNotifications: true)
                         }
                     } label: {
                         Text("Retry")
@@ -435,7 +437,7 @@ struct ContentView: View {
         }
     }
 
-    func refreshAlerts() async {
+    func refreshAlerts(shouldSendNotifications: Bool = true) async {
         guard !isRefreshing else {
             return
         }
@@ -447,12 +449,49 @@ struct ContentView: View {
             ttcAlerts = try await TTCAlertsService().fetchAlertsFeed()
             lastUpdatedDate = Date()
             saveLastUpdatedDate()
+
+            if shouldSendNotifications {
+                await sendNotificationsForAlertingRoutesIfNeeded()
+            }
         } catch {
             refreshErrorMessage = "Could not refresh TTC alerts. Please try again."
             print("Could not refresh TTC alerts: \(error.localizedDescription)")
         }
 
         isRefreshing = false
+    }
+
+    func sendNotificationsForAlertingRoutesIfNeeded() async {
+        guard notificationsEnabled else {
+            return
+        }
+
+        for route in savedRoutes {
+            let alerts = matchingAlerts(for: route)
+            let severity = AlertSeverity.strongestSeverity(in: alerts.map(\.text))
+
+            guard severity != .normal else {
+                continue
+            }
+
+            let notificationKey = RouteAlertNotificationManager.notificationKey(
+                for: route,
+                severity: severity,
+                alerts: alerts
+            )
+
+            guard !sentNotificationKeys.contains(notificationKey) else {
+                continue
+            }
+
+            sentNotificationKeys.insert(notificationKey)
+
+            await RouteAlertNotificationManager.scheduleRouteAlertNotification(
+                for: route,
+                severity: severity,
+                identifier: notificationKey
+            )
+        }
     }
 
     func matchingAlerts(for route: TTCAlertRoute) -> [TTCAlert] {
