@@ -12,12 +12,18 @@
 
 /* Begin PBXFileReference section */
 		967989ED2FBD6033002B92DB /* ttc-route-alerts.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "ttc-route-alerts.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		96798A102FBF0000002B92DB /* ttc-route-alertsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "ttc-route-alertsTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		967989EF2FBD6033002B92DB /* ttc-route-alerts */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "ttc-route-alerts";
+			sourceTree = "<group>";
+		};
+		96798A112FBF0000002B92DB /* ttc-route-alertsTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "ttc-route-alertsTests";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -31,6 +37,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		96798A132FBF0000002B92DB /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -38,6 +51,7 @@
 			isa = PBXGroup;
 			children = (
 				967989EF2FBD6033002B92DB /* ttc-route-alerts */,
+				96798A112FBF0000002B92DB /* ttc-route-alertsTests */,
 				967989EE2FBD6033002B92DB /* Products */,
 			);
 			sourceTree = "<group>";
@@ -46,6 +60,7 @@
 			isa = PBXGroup;
 			children = (
 				967989ED2FBD6033002B92DB /* ttc-route-alerts.app */,
+				96798A102FBF0000002B92DB /* ttc-route-alertsTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -76,7 +91,40 @@
 			productReference = 967989ED2FBD6033002B92DB /* ttc-route-alerts.app */;
 			productType = "com.apple.product-type.application";
 		};
+		96798A152FBF0000002B92DB /* ttc-route-alertsTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 96798A1A2FBF0000002B92DB /* Build configuration list for PBXNativeTarget "ttc-route-alertsTests" */;
+			buildPhases = (
+				96798A122FBF0000002B92DB /* Sources */,
+				96798A132FBF0000002B92DB /* Frameworks */,
+				96798A142FBF0000002B92DB /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				96798A162FBF0000002B92DB /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				96798A112FBF0000002B92DB /* ttc-route-alertsTests */,
+			);
+			name = "ttc-route-alertsTests";
+			packageProductDependencies = (
+			);
+			productName = "ttc-route-alertsTests";
+			productReference = 96798A102FBF0000002B92DB /* ttc-route-alertsTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
+
+/* Begin PBXContainerItemProxy section */
+		96798A172FBF0000002B92DB /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 967989E52FBD6033002B92DB /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 967989EC2FBD6033002B92DB;
+			remoteInfo = "ttc-route-alerts";
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXProject section */
 		967989E52FBD6033002B92DB /* Project object */ = {
@@ -88,6 +136,10 @@
 				TargetAttributes = {
 					967989EC2FBD6033002B92DB = {
 						CreatedOnToolsVersion = 26.5;
+					};
+					96798A152FBF0000002B92DB = {
+						CreatedOnToolsVersion = 26.5;
+						TestTargetID = 967989EC2FBD6033002B92DB;
 					};
 				};
 			};
@@ -109,12 +161,20 @@
 			projectRoot = "";
 			targets = (
 				967989EC2FBD6033002B92DB /* ttc-route-alerts */,
+				96798A152FBF0000002B92DB /* ttc-route-alertsTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		967989EB2FBD6033002B92DB /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		96798A142FBF0000002B92DB /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -131,7 +191,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		96798A122FBF0000002B92DB /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		96798A162FBF0000002B92DB /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 967989EC2FBD6033002B92DB /* ttc-route-alerts */;
+			targetProxy = 96798A172FBF0000002B92DB /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		967989F62FBD6034002B92DB /* Debug */ = {
@@ -313,6 +388,52 @@
 			};
 			name = Release;
 		};
+		96798A182FBF0000002B92DB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.sully.ttc-route-alertsTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ttc-route-alerts.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ttc-route-alerts";
+			};
+			name = Debug;
+		};
+		96798A192FBF0000002B92DB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.sully.ttc-route-alertsTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ttc-route-alerts.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ttc-route-alerts";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -330,6 +451,15 @@
 			buildConfigurations = (
 				967989F92FBD6034002B92DB /* Debug */,
 				967989FA2FBD6034002B92DB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		96798A1A2FBF0000002B92DB /* Build configuration list for PBXNativeTarget "ttc-route-alertsTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				96798A182FBF0000002B92DB /* Debug */,
+				96798A192FBF0000002B92DB /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
