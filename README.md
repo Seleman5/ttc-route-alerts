@@ -29,8 +29,12 @@ TTC Route Alerts is a SwiftUI app for saving your regular TTC routes and checkin
 - Display alert severity indicators
 - Manually refresh alert data
 - Pull down to refresh alerts
+- Automatically refresh alerts while the app is open
+- Use iOS BackgroundTasks for best-effort background TTC alert refresh
+- Cache the last successful alerts for offline or network failure cases
 - Request local notification permission from Settings
 - Send local route alert notifications after manual refresh or pull-to-refresh
+- Send background local notifications for saved routes with alerts when background refresh runs
 - Show relative last updated timestamps
 - View route detail screens
 - Use a settings screen for notifications and refresh preferences
@@ -51,9 +55,17 @@ TTC Route Alerts is a SwiftUI app for saving your regular TTC routes and checkin
 - UserDefaults
 - UserNotifications
 - URLSession
+- BackgroundTasks
 - SwiftProtobuf
 - TTC GTFS-Realtime API
 - TTC GTFS static route data
+
+## Important Notes
+
+- iOS controls the exact timing of background refresh.
+- The 5 minute and 15 minute refresh preferences are earliest refresh hints only.
+- Background refresh is best-effort and depends on iOS scheduling, battery, network availability, and usage patterns.
+- Remote push notifications are not implemented.
 
 ## Current Screenshots
 
@@ -67,6 +79,7 @@ TTC Route Alerts is a SwiftUI app for saving your regular TTC routes and checkin
 
 ## Future Improvements
 
-- Background refresh based on the saved refresh preference
+- Smarter notification deduplication across launches
+- More advanced background scheduling
 - Remote push notifications
-- Better notification scheduling and notification history
+- Better offline persistence and alert history
