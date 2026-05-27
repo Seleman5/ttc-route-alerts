@@ -19,30 +19,41 @@ TTC Route Alerts is a SwiftUI app for saving your regular TTC routes and checkin
 - Select route types: Subway, Bus, or Streetcar
 - Add optional nicknames for saved routes
 - Use route suggestions and autocomplete
+- Load route suggestions from the bundled TTC GTFS static `routes.txt` file
 - Edit saved routes without deleting and re-adding them
 - Store saved routes locally with UserDefaults
 - Fetch live TTC alerts
 - Decode GTFS-Realtime alert data
-- Match alerts to saved routes
+- Match alerts to saved routes with GTFS `route_id` support and text fallback
 - Show dynamic route status updates
 - Display alert severity indicators
 - Manually refresh alert data
 - Pull down to refresh alerts
+- Request local notification permission from Settings
+- Send local route alert notifications after manual refresh or pull-to-refresh
 - Show relative last updated timestamps
 - View route detail screens
-- Use a settings screen for future app controls
-- Save a future-ready notification preference
+- Use a settings screen for notifications and refresh preferences
+- Save a notification preference
 - Save a refresh preference setting
 - Handle empty, loading, and error states
+
+## Tests
+
+- Unit tests for route alert matching with `RouteMatcher`
+- Unit tests for alert severity classification with `AlertSeverity`
+- Unit tests for route input validation, normalization, suggestion matching, and duplicate detection
 
 ## Tech Stack
 
 - Swift
 - SwiftUI
 - UserDefaults
+- UserNotifications
 - URLSession
 - SwiftProtobuf
 - TTC GTFS-Realtime API
+- TTC GTFS static route data
 
 ## Current Screenshots
 
@@ -56,7 +67,6 @@ TTC Route Alerts is a SwiftUI app for saving your regular TTC routes and checkin
 
 ## Future Improvements
 
-- Real push notifications
-- Automatic refresh based on saved refresh preference
-- Full TTC GTFS route database integration
-- Better route matching with official route IDs
+- Background refresh based on the saved refresh preference
+- Remote push notifications
+- Better notification scheduling and notification history
