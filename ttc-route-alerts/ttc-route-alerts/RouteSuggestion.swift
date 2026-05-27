@@ -44,6 +44,8 @@ struct SuggestedRoute: Identifiable {
 }
 
 enum RouteSuggestion {
+    static let suggestedRoutes = loadBundledRoutes() ?? fallbackSuggestedRoutes
+
     static func isSuggestionNickname(_ nickname: String) -> Bool {
         suggestedRoutes.contains { suggestion in
             suggestion.nickname.lowercased() == nickname.lowercased()
@@ -141,9 +143,142 @@ enum RouteSuggestion {
             }
     }
 
+    private static func loadBundledRoutes() -> [SuggestedRoute]? {
+        guard let routesFileURL = Bundle.main.url(forResource: "routes", withExtension: "txt") else {
+            return nil
+        }
+
+        do {
+            let routesText = try String(contentsOf: routesFileURL, encoding: .utf8)
+            let parsedRoutes = parseGTFSSuggestions(from: routesText)
+
+            if parsedRoutes.isEmpty {
+                return nil
+            }
+
+            return parsedRoutes
+        } catch {
+            return nil
+        }
+    }
+
+    static func parseGTFSSuggestions(from routesText: String) -> [SuggestedRoute] {
+        let lines = routesText
+            .components(separatedBy: .newlines)
+            .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+
+        guard let headerLine = lines.first else {
+            return []
+        }
+
+        let headers = csvFields(in: headerLine)
+        guard let routeShortNameIndex = headers.firstIndex(of: "route_short_name"),
+              let routeLongNameIndex = headers.firstIndex(of: "route_long_name"),
+              let routeTypeIndex = headers.firstIndex(of: "route_type") else {
+            return []
+        }
+
+        var routesByID: [String: SuggestedRoute] = [:]
+
+        for line in lines.dropFirst() {
+            let fields = csvFields(in: line)
+
+            guard fields.indices.contains(routeShortNameIndex),
+                  fields.indices.contains(routeLongNameIndex),
+                  fields.indices.contains(routeTypeIndex),
+                  let routeTypeNumber = Int(fields[routeTypeIndex]),
+                  let routeType = routeType(fromGTFSRouteType: routeTypeNumber) else {
+                continue
+            }
+
+            let routeNumber = fields[routeShortNameIndex].trimmingCharacters(in: .whitespacesAndNewlines)
+            let routeName = fields[routeLongNameIndex].trimmingCharacters(in: .whitespacesAndNewlines)
+
+            guard !routeNumber.isEmpty else {
+                continue
+            }
+
+            let nickname = routeName.isEmpty ? routeNumber : routeName.capitalized
+            let suggestion = SuggestedRoute(routeType: routeType, routeNumber: routeNumber, nickname: nickname)
+
+            routesByID[suggestion.id] = suggestion
+        }
+
+        return routesByID.values.sorted { firstRoute, secondRoute in
+            if firstRoute.routeType != secondRoute.routeType {
+                return routeTypeSortOrder(firstRoute.routeType) < routeTypeSortOrder(secondRoute.routeType)
+            }
+
+            let firstNumber = Int(firstRoute.routeNumber)
+            let secondNumber = Int(secondRoute.routeNumber)
+
+            if let firstNumber, let secondNumber, firstNumber != secondNumber {
+                return firstNumber < secondNumber
+            }
+
+            return firstRoute.routeNumber < secondRoute.routeNumber
+        }
+    }
+
+    private static func csvFields(in line: String) -> [String] {
+        var fields: [String] = []
+        var currentField = ""
+        var isInsideQuotes = false
+        var index = line.startIndex
+
+        while index < line.endIndex {
+            let character = line[index]
+
+            if character == "\"" {
+                let nextIndex = line.index(after: index)
+
+                if isInsideQuotes, nextIndex < line.endIndex, line[nextIndex] == "\"" {
+                    currentField.append(character)
+                    index = nextIndex
+                } else {
+                    isInsideQuotes.toggle()
+                }
+            } else if character == "," && !isInsideQuotes {
+                fields.append(currentField)
+                currentField = ""
+            } else {
+                currentField.append(character)
+            }
+
+            index = line.index(after: index)
+        }
+
+        fields.append(currentField)
+        return fields
+    }
+
+    private static func routeType(fromGTFSRouteType routeType: Int) -> RouteType? {
+        switch routeType {
+        case 0:
+            return .streetcar
+        case 1:
+            return .subway
+        case 3:
+            return .bus
+        default:
+            return nil
+        }
+    }
+
+    private static func routeTypeSortOrder(_ routeType: RouteType) -> Int {
+        switch routeType {
+        case .subway:
+            return 0
+        case .streetcar:
+            return 1
+        case .bus:
+            return 2
+        }
+    }
+
     // Temporary starter dataset for route autocomplete.
-    // Later, this should be replaced with a full TTC GTFS routes database.
-    static let suggestedRoutes = [
+    // This stays as a fallback if bundled GTFS route data is missing or invalid.
+    private static let fallbackSuggestedRoutes = [
         SuggestedRoute(routeType: .subway, routeNumber: "1", nickname: "Yonge-University"),
         SuggestedRoute(routeType: .subway, routeNumber: "2", nickname: "Bloor-Danforth"),
         SuggestedRoute(routeType: .subway, routeNumber: "4", nickname: "Sheppard"),
