@@ -7,7 +7,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @AppStorage("notificationsEnabled") private var notificationsEnabled = false
-    @AppStorage("refreshPreference") private var refreshPreference = RefreshPreference.manualOnly.rawValue
+    @AppStorage(RefreshPreference.storageKey) private var refreshPreference = RefreshPreference.manualOnly.rawValue
     @State private var notificationMessage: String?
     @State private var isRevertingNotificationsToggle = false
 
@@ -130,6 +130,8 @@ struct SettingsView: View {
 }
 
 enum RefreshPreference: String, CaseIterable, Identifiable {
+    static let storageKey = "refreshPreference"
+
     case manualOnly = "Manual only"
     case everyFiveMinutes = "Every 5 minutes"
     case everyFifteenMinutes = "Every 15 minutes"

@@ -11,6 +11,8 @@ import SwiftUI
 struct ttc_route_alertsApp: App {
     init() {
         RouteAlertNotificationManager.configureForegroundNotifications()
+        BackgroundAlertRefreshManager.registerBackgroundRefresh()
+        BackgroundAlertRefreshManager.scheduleBackgroundRefresh()
     }
 
     var body: some Scene {

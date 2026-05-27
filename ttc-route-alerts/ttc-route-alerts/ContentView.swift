@@ -9,7 +9,7 @@ import SwiftUI
 
 struct ContentView: View {
     @AppStorage("notificationsEnabled") private var notificationsEnabled = false
-    @AppStorage("refreshPreference") private var refreshPreference = RefreshPreference.manualOnly.rawValue
+    @AppStorage(RefreshPreference.storageKey) private var refreshPreference = RefreshPreference.manualOnly.rawValue
     @Environment(\.scenePhase) private var scenePhase
     @State private var selectedRouteType = RouteType.subway
     @State private var routeNumberInput = ""
@@ -92,6 +92,7 @@ struct ContentView: View {
         }
         .onChange(of: refreshPreference) { _, _ in
             startAutoRefreshIfNeeded()
+            BackgroundAlertRefreshManager.scheduleBackgroundRefresh()
         }
         .onChange(of: scenePhase) { _, newScenePhase in
             if newScenePhase == .active {
