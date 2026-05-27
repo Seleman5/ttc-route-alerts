@@ -332,37 +332,20 @@ struct ContentView: View {
     }
 
     func routeFromForm(id: UUID = UUID(), status: String = "Checking status...") -> TTCAlertRoute? {
-        let cleanedRouteInput = routeNumberInput.trimmingCharacters(in: .whitespacesAndNewlines)
-        let cleanedNickname = routeNicknameInput.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        // Always calculate a fresh suggestion from the current input before saving.
-        let matchingSuggestion = RouteSuggestion.matchingSuggestion(
-            for: cleanedRouteInput,
-            selectedRouteType: selectedRouteType
+        let validationResult = RouteInputValidator.validateRoute(
+            routeInput: routeNumberInput,
+            nicknameInput: routeNicknameInput,
+            selectedRouteType: selectedRouteType,
+            id: id,
+            status: status
         )
 
-        guard let matchingSuggestion else {
-            routeFormErrorMessage = validationMessage(for: selectedRouteType)
+        guard let route = validationResult.route else {
+            routeFormErrorMessage = validationResult.errorMessage
             return nil
         }
 
-        let nickname: String
-
-        if cleanedNickname.isEmpty || RouteSuggestion.isSuggestionNickname(cleanedNickname) {
-            nickname = matchingSuggestion.nickname
-        } else {
-            nickname = cleanedNickname
-        }
-
-        return TTCAlertRoute(
-            id: id,
-            name: matchingSuggestion.routeNumber,
-            status: status,
-            routeID: matchingSuggestion.routeID,
-            routeType: matchingSuggestion.routeType,
-            routeNumber: matchingSuggestion.routeNumber,
-            nickname: nickname
-        )
+        return route
     }
 
     func addRoute() {
@@ -420,28 +403,15 @@ struct ContentView: View {
     }
 
     func validationMessage(for routeType: RouteType) -> String {
-        switch routeType {
-        case .subway:
-            return "That doesn't look like a valid subway line."
-        case .streetcar:
-            return "That doesn't look like a valid streetcar route."
-        case .bus:
-            return "That doesn't look like a valid bus route."
-        }
+        RouteInputValidator.validationMessage(for: routeType)
     }
 
     func routeAlreadySaved(_ newRoute: TTCAlertRoute, excludingRouteID: UUID? = nil) -> Bool {
-        savedRoutes.contains { savedRoute in
-            if savedRoute.id == excludingRouteID {
-                return false
-            }
-
-            let sameDisplayName = savedRoute.displayName.lowercased() == newRoute.displayName.lowercased()
-            let sameRouteType = savedRoute.routeType == nil || savedRoute.routeType == newRoute.routeType
-            let sameRouteNumber = RouteMatcher.routeNumber(for: savedRoute) == RouteMatcher.routeNumber(for: newRoute)
-
-            return sameDisplayName || (sameRouteType && sameRouteNumber)
-        }
+        RouteInputValidator.routeAlreadySaved(
+            newRoute,
+            in: savedRoutes,
+            excludingRouteID: excludingRouteID
+        )
     }
 
     func deleteRoutes(at offsets: IndexSet) {
