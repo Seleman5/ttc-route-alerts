@@ -25,16 +25,21 @@ struct RouteCardView: View {
                 Text(route.displayName)
                     .font(.system(.headline, design: .rounded))
                     .foregroundStyle(.primary)
+                    .lineLimit(2)
 
                 StatusBadgeView(severity: severity)
             }
 
             Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
         }
         .padding(16)
         .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .shadow(color: .black.opacity(0.06), radius: 12, x: 0, y: 5)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 4)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(route.displayName), \(severity.rawValue)")
     }

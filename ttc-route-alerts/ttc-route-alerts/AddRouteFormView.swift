@@ -19,9 +19,12 @@ struct AddRouteFormView: View {
     let onSelectSuggestion: (SuggestedRoute) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(editingRouteID == nil ? "Add Route" : "Edit Route")
-                .font(.headline)
+        VStack(alignment: .leading, spacing: 14) {
+            HomeSectionHeaderView(
+                title: editingRouteID == nil ? "Add Route" : "Edit Route",
+                systemImage: editingRouteID == nil ? "plus" : "pencil",
+                tint: ttcRed
+            )
 
             Picker("Route Type", selection: $selectedRouteType) {
                 ForEach(RouteType.allCases) { routeType in
@@ -52,6 +55,9 @@ struct AddRouteFormView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12))
 
             routeSuggestionsSection
+
+            Divider()
+                .padding(.vertical, 2)
 
             Button {
                 onSave()
@@ -87,10 +93,10 @@ struct AddRouteFormView: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(16)
+        .padding(18)
         .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .shadow(color: .black.opacity(0.06), radius: 14, x: 0, y: 6)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.05), radius: 12, x: 0, y: 5)
     }
 
     var routeSuggestionsSection: some View {
@@ -123,7 +129,7 @@ struct AddRouteFormView: View {
                     }
                     .padding(12)
                     .background(Color(.systemGray6))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
                 .buttonStyle(.plain)
             }

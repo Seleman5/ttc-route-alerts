@@ -52,7 +52,9 @@ struct ContentView: View {
                         addRouteSection
                         routesSection
                     }
-                    .padding(20)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 12)
+                    .padding(.bottom, 28)
                 }
                 .refreshable {
                     await refreshAlerts(shouldSendNotifications: true)
@@ -125,7 +127,7 @@ struct ContentView: View {
     }
 
     var headerSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 8) {
                 Text("TTC Route Alerts")
                     .font(.system(.largeTitle, design: .rounded).weight(.bold))
@@ -136,20 +138,36 @@ struct ContentView: View {
                     .foregroundStyle(.secondary)
             }
 
-            HStack(spacing: 8) {
-                Text("Last successful update: \(lastUpdatedText)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 12) {
+                HomeSectionHeaderView(title: "Status", systemImage: "clock.arrow.circlepath", tint: ttcRed)
 
-                ZStack {
-                    if isRefreshing {
-                        ProgressView()
-                            .controlSize(.small)
+                HStack(spacing: 8) {
+                    Text("Last successful update")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Spacer(minLength: 8)
+
+                    Text(lastUpdatedText)
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+
+                    ZStack {
+                        if isRefreshing {
+                            ProgressView()
+                                .controlSize(.small)
+                        }
                     }
+                    .frame(width: 18, height: 18)
                 }
-                .frame(width: 18, height: 18)
+                .frame(minHeight: 18)
             }
-            .frame(minHeight: 18, alignment: .leading)
+            .padding(14)
+            .background(Color(.secondarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .shadow(color: .black.opacity(0.04), radius: 10, x: 0, y: 4)
 
             if let refreshErrorMessage {
                 HStack(spacing: 10) {
@@ -186,7 +204,7 @@ struct ContentView: View {
                 .padding(.vertical, 10)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color.orange.opacity(0.10))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .clipShape(RoundedRectangle(cornerRadius: 14))
                 .transition(.opacity)
             }
         }
@@ -212,9 +230,13 @@ struct ContentView: View {
     }
 
     var routesSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Saved Routes")
-                .font(.headline)
+        VStack(alignment: .leading, spacing: 12) {
+            HomeSectionHeaderView(
+                title: "Saved Routes",
+                systemImage: "list.bullet",
+                tint: ttcRed,
+                accessoryText: "\(savedRoutes.count)"
+            )
 
             if savedRoutes.isEmpty {
                 EmptyRoutesView(ttcRed: ttcRed)
