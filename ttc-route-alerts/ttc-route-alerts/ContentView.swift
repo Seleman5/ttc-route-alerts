@@ -76,7 +76,16 @@ struct ContentView: View {
                             await refreshAlerts(shouldSendNotifications: true)
                         }
                     } label: {
-                        Image(systemName: "arrow.clockwise")
+                        ZStack {
+                            Image(systemName: "arrow.clockwise")
+                                .opacity(isRefreshing ? 0 : 1)
+
+                            ProgressView()
+                                .controlSize(.small)
+                                .opacity(isRefreshing ? 1 : 0)
+                        }
+                        .frame(width: 24, height: 24)
+                        .contentShape(Rectangle())
                     }
                     .disabled(isRefreshing)
                     .accessibilityLabel(isRefreshing ? "Refreshing alerts" : "Refresh alerts")
@@ -127,28 +136,33 @@ struct ContentView: View {
                     .foregroundStyle(.secondary)
             }
 
-            VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
                 Text("Last successful update: \(lastUpdatedText)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
-                if isRefreshing {
-                    HStack(spacing: 8) {
+                ZStack {
+                    if isRefreshing {
                         ProgressView()
                             .controlSize(.small)
-
-                        Text("Refreshing alerts...")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
                     }
                 }
+                .frame(width: 18, height: 18)
             }
+            .frame(minHeight: 18, alignment: .leading)
 
             if let refreshErrorMessage {
-                VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 10) {
+                    Image(systemName: "wifi.exclamationmark")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+
                     Text(refreshErrorMessage)
                         .font(.caption)
                         .foregroundStyle(.orange)
+                        .lineLimit(2)
+
+                    Spacer(minLength: 8)
 
                     Button {
                         Task {
@@ -159,7 +173,8 @@ struct ContentView: View {
                             .font(.caption)
                             .fontWeight(.semibold)
                             .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
+                            .padding(.vertical, 7)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(.white)
@@ -167,14 +182,18 @@ struct ContentView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .disabled(isRefreshing)
                 }
-                .padding(12)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color.orange.opacity(0.10))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
+                .transition(.opacity)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, 8)
+        .animation(.easeInOut(duration: 0.2), value: isRefreshing)
+        .animation(.easeInOut(duration: 0.2), value: refreshErrorMessage)
     }
 
     var addRouteSection: some View {
@@ -593,6 +612,10 @@ struct ContentView: View {
     }
 
     func routeSeverity(for route: TTCAlertRoute) -> AlertSeverity {
+        if let cachedSeverity = routeSeverities[route.id] {
+            return cachedSeverity
+        }
+
         let alerts = matchingAlerts(for: route)
         return AlertSeverity.strongestSeverity(in: alerts.map(\.text))
     }
