@@ -25,9 +25,14 @@ struct AlertCardView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(severity.backgroundColor.opacity(0.55))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(15)
+        .background(Color(.secondarySystemGroupedBackground))
+        .overlay {
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(severity.backgroundColor, lineWidth: 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .shadow(color: .black.opacity(0.04), radius: 10, x: 0, y: 4)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(severity.rawValue): \(alertText)")
     }

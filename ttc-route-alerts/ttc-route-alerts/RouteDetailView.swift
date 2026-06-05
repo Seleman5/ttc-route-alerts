@@ -19,12 +19,13 @@ struct RouteDetailView: View {
                 .ignoresSafeArea()
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 22) {
                     detailHeader
-                    lastUpdatedSection
                     alertsSection
                 }
-                .padding(20)
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 28)
             }
         }
         .navigationTitle(route.displayName)
@@ -32,56 +33,73 @@ struct RouteDetailView: View {
     }
 
     var detailHeader: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Circle()
-                .fill(ttcRed)
-                .frame(width: 54, height: 54)
-                .overlay {
-                    Image(systemName: "tram.fill")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(.white)
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .top, spacing: 14) {
+                Circle()
+                    .fill(ttcRed)
+                    .frame(width: 56, height: 56)
+                    .overlay {
+                        Image(systemName: "tram.fill")
+                            .font(.system(size: 23, weight: .semibold))
+                            .foregroundStyle(.white)
+                    }
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(route.displayName)
+                        .font(.system(.title2, design: .rounded).weight(.bold))
+                        .foregroundStyle(.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    StatusBadgeView(severity: severity)
                 }
 
-            Text(route.displayName)
-                .font(.system(.title, design: .rounded).weight(.bold))
-                .foregroundStyle(.primary)
+                Spacer(minLength: 0)
+            }
 
-            StatusBadgeView(severity: severity)
+            Divider()
+
+            HStack(spacing: 10) {
+                Image(systemName: "clock.arrow.circlepath")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(ttcRed)
+                    .frame(width: 24, height: 24)
+                    .background(ttcRed.opacity(0.12))
+                    .clipShape(Circle())
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Last Successful Update")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Text(lastUpdatedText)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.primary)
+                }
+
+                Spacer(minLength: 0)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(18)
+        .padding(20)
         .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .shadow(color: .black.opacity(0.06), radius: 14, x: 0, y: 6)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.05), radius: 12, x: 0, y: 5)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(route.displayName), \(severity.rawValue)")
-    }
-
-    var lastUpdatedSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Last Successful Update")
-                .font(.headline)
-
-            Text(lastUpdatedText)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .shadow(color: .black.opacity(0.06), radius: 12, x: 0, y: 5)
+        .accessibilityLabel("\(route.displayName), \(severity.rawValue), last successful update \(lastUpdatedText)")
     }
 
     var alertsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("TTC Alerts")
-                .font(.headline)
+            HomeSectionHeaderView(
+                title: "TTC Alerts",
+                systemImage: "exclamationmark.bubble",
+                tint: ttcRed,
+                accessoryText: alerts.isEmpty ? nil : "\(alerts.count)"
+            )
 
             if alerts.isEmpty {
-                Text("No alerts for this route right now.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                noAlertsView
             } else {
                 ForEach(alerts, id: \.self) { alert in
                     AlertCardView(alertText: alert.text, severity: AlertSeverity.forAlertText(alert.text))
@@ -89,9 +107,33 @@ struct RouteDetailView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
+    }
+
+    var noAlertsView: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.title3)
+                .foregroundStyle(.green)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("No alerts for this route right now.")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.primary)
+
+                Text("The latest saved TTC alert feed has no matching alerts for this route.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .shadow(color: .black.opacity(0.06), radius: 12, x: 0, y: 5)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .shadow(color: .black.opacity(0.04), radius: 10, x: 0, y: 4)
+        .accessibilityElement(children: .combine)
     }
 }
