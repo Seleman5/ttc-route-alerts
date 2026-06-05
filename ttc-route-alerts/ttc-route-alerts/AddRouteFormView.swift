@@ -70,9 +70,8 @@ struct AddRouteFormView: View {
                     .padding(.horizontal, 14)
                     .padding(.vertical, 12)
                     .foregroundStyle(.white)
-                    .background(ttcRed)
+                    .background(ttcRed.opacity(0.92))
                     .clipShape(RoundedRectangle(cornerRadius: AppDesign.smallRadius))
-                    .shadow(color: ttcRed.opacity(0.18), radius: 8, x: 0, y: 3)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)

@@ -27,7 +27,7 @@ struct ContentView: View {
     @State private var routeSeverities: [UUID: AlertSeverity] = [:]
     @State private var sentNotificationKeys: Set<String> = []
     @State private var autoRefreshTask: Task<Void, Never>?
-    @ScaledMetric private var routeRowHeight = 112
+    @ScaledMetric private var routeRowHeight = 104
 
     static let savedRoutesKey = "savedRoutes"
     static let cachedAlertsKey = "cachedTTCAlerts"
@@ -65,13 +65,15 @@ struct ContentView: View {
                     await refreshAlerts(shouldSendNotifications: true)
                 }
             }
-            .navigationTitle("My Routes")
+            .navigationTitle("TTC Route Alerts")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     NavigationLink {
                         SettingsView(ttcRed: ttcRed, appBackground: appBackground)
                     } label: {
                         Image(systemName: "gearshape")
+                            .font(.body.weight(.semibold))
                     }
                     .accessibilityLabel("Settings")
                     .accessibilityHint("Opens notification and refresh settings.")
@@ -94,6 +96,7 @@ struct ContentView: View {
                         .frame(width: 24, height: 24)
                         .contentShape(Rectangle())
                     }
+                    .font(.body.weight(.semibold))
                     .disabled(isRefreshing)
                     .accessibilityLabel(isRefreshing ? "Refreshing alerts" : "Refresh alerts")
                     .accessibilityHint("Fetches the latest TTC alerts for your saved routes.")
@@ -132,21 +135,41 @@ struct ContentView: View {
     }
 
     var headerSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("TTC Route Alerts")
-                    .font(.system(.title, design: .rounded).weight(.bold))
-                    .foregroundStyle(.primary)
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("My Routes")
+                            .font(.system(.title2, design: .rounded).weight(.bold))
+                            .foregroundStyle(.primary)
 
-                Text("Track only the TTC routes you care about.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
+                        Text("Track only the TTC routes you care about.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
 
-            VStack(alignment: .leading, spacing: 12) {
-                HomeSectionHeaderView(title: "Status", systemImage: "clock.arrow.circlepath", tint: ttcRed)
+                    Spacer(minLength: 12)
+
+                    Text("\(savedRoutes.count)")
+                        .font(.system(.headline, design: .rounded).weight(.bold))
+                        .foregroundStyle(ttcRed)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(ttcRed.opacity(0.08))
+                        .clipShape(Capsule())
+                        .accessibilityLabel("\(savedRoutes.count) saved routes")
+                }
+
+                Divider()
 
                 HStack(spacing: 8) {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(ttcRed)
+                        .frame(width: 18, height: 18)
+                        .background(ttcRed.opacity(0.06))
+                        .clipShape(RoundedRectangle(cornerRadius: 5))
+
                     Text("Last successful update")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -159,17 +182,14 @@ struct ContentView: View {
                         .foregroundStyle(.primary)
                         .lineLimit(1)
 
-                    ZStack {
-                        if isRefreshing {
-                            ProgressView()
-                                .controlSize(.small)
-                        }
+                    if isRefreshing {
+                        ProgressView()
+                            .controlSize(.small)
                     }
-                    .frame(width: 18, height: 18)
                 }
                 .frame(minHeight: 18)
             }
-            .appCardStyle(padding: 14, cornerRadius: AppDesign.cardRadius)
+            .appCardStyle(padding: 16, cornerRadius: AppDesign.cardRadius)
 
             if let refreshErrorMessage {
                 HStack(spacing: 10) {

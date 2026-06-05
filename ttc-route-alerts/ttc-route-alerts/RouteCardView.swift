@@ -11,7 +11,7 @@ struct RouteCardView: View {
     let ttcRed: Color
 
     var body: some View {
-        HStack(spacing: 13) {
+        HStack(alignment: .center, spacing: 14) {
             RoundedRectangle(cornerRadius: AppDesign.iconRadius)
                 .fill(ttcRed.opacity(0.09))
                 .frame(width: 40, height: 40)
@@ -26,17 +26,15 @@ struct RouteCardView: View {
                     .font(.system(.subheadline, design: .rounded).weight(.semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 StatusBadgeView(severity: severity)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            Spacer()
-
-            Image(systemName: "chevron.right")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.tertiary)
+            Spacer(minLength: 8)
         }
-        .appCardStyle(padding: 16)
+        .appCardStyle(padding: 15)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(route.displayName), \(severity.rawValue)")
     }
