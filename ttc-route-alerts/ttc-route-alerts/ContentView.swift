@@ -220,11 +220,12 @@ struct ContentView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 12)
+                    .foregroundStyle(.white)
+                    .background(ttcRed)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .foregroundStyle(.white)
-            .background(ttcRed)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
             .accessibilityLabel(editingRouteID == nil ? "Add route" : "Save changes")
             .accessibilityHint(editingRouteID == nil ? "Adds the selected TTC route to your saved routes." : "Saves changes to this TTC route.")
 
@@ -237,11 +238,12 @@ struct ContentView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 12)
+                        .foregroundStyle(ttcRed)
+                        .background(ttcRed.opacity(0.10))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(ttcRed)
-                .background(ttcRed.opacity(0.10))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
             }
         }
         .padding(16)
