@@ -26,7 +26,7 @@ struct SettingsView: View {
                     appStatusSection
                     aboutSection
                 }
-                .padding(.horizontal, 20)
+                .padding(.horizontal, AppDesign.screenHorizontalPadding)
                 .padding(.top, 16)
                 .padding(.bottom, 28)
             }
@@ -81,6 +81,7 @@ struct SettingsView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+                .layoutPriority(1)
 
                 Spacer(minLength: 8)
 
@@ -222,19 +223,14 @@ struct SettingsMessageView: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.tertiarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .background(AppDesign.insetBackground)
+            .clipShape(RoundedRectangle(cornerRadius: AppDesign.smallRadius))
             .accessibilityLabel(message)
     }
 }
 
 private extension View {
     func settingsCardStyle() -> some View {
-        self
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(18)
-            .background(Color(.secondarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .shadow(color: .black.opacity(0.05), radius: 12, x: 0, y: 5)
+        appCardStyle()
     }
 }

@@ -32,13 +32,13 @@ struct AlertCardView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(15)
-        .background(Color(.secondarySystemGroupedBackground))
+        .background(AppDesign.cardBackground)
         .overlay {
-            RoundedRectangle(cornerRadius: 14)
+            RoundedRectangle(cornerRadius: AppDesign.smallRadius)
                 .stroke(severity.backgroundColor, lineWidth: 1)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-        .shadow(color: .black.opacity(0.04), radius: 10, x: 0, y: 4)
+        .clipShape(RoundedRectangle(cornerRadius: AppDesign.smallRadius))
+        .shadow(color: AppDesign.softShadow, radius: 10, x: 0, y: 4)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(severity.rawValue): \(alertText). Last successful update: \(lastUpdatedText)")
     }

@@ -21,14 +21,15 @@ struct HomeSectionHeaderView: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: systemImage)
-                .font(.system(size: 11, weight: .semibold))
+                .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(tint)
-                .frame(width: 18, height: 18)
-                .background(tint.opacity(0.07))
+                .frame(width: 17, height: 17)
+                .background(tint.opacity(0.06))
                 .clipShape(RoundedRectangle(cornerRadius: 5))
 
             Text(title)
-                .font(.headline)
+                .font(.subheadline)
+                .fontWeight(.semibold)
                 .foregroundStyle(.primary)
 
             Spacer(minLength: 8)
@@ -40,7 +41,7 @@ struct HomeSectionHeaderView: View {
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(Color(.tertiarySystemGroupedBackground))
+                    .background(AppDesign.insetBackground)
                     .clipShape(Capsule())
             }
         }

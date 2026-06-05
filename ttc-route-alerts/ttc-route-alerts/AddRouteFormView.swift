@@ -38,8 +38,8 @@ struct AddRouteFormView: View {
                 .textInputAutocapitalization(.words)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
-                .background(Color(.systemGray6))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .background(AppDesign.fieldBackground)
+                .clipShape(RoundedRectangle(cornerRadius: AppDesign.smallRadius))
 
             if let routeFormErrorMessage {
                 Text(routeFormErrorMessage)
@@ -51,8 +51,8 @@ struct AddRouteFormView: View {
                 .textInputAutocapitalization(.words)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
-                .background(Color(.systemGray6))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .background(AppDesign.fieldBackground)
+                .clipShape(RoundedRectangle(cornerRadius: AppDesign.smallRadius))
 
             if !visibleSuggestedRoutes.isEmpty {
                 routeSuggestionsSection
@@ -71,7 +71,8 @@ struct AddRouteFormView: View {
                     .padding(.vertical, 12)
                     .foregroundStyle(.white)
                     .background(ttcRed)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .clipShape(RoundedRectangle(cornerRadius: AppDesign.smallRadius))
+                    .shadow(color: ttcRed.opacity(0.18), radius: 8, x: 0, y: 3)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -89,16 +90,17 @@ struct AddRouteFormView: View {
                         .padding(.vertical, 12)
                         .foregroundStyle(ttcRed)
                         .background(ttcRed.opacity(0.10))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: AppDesign.smallRadius)
+                                .stroke(ttcRed.opacity(0.18), lineWidth: 1)
+                        }
+                        .clipShape(RoundedRectangle(cornerRadius: AppDesign.smallRadius))
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(18)
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: .black.opacity(0.05), radius: 12, x: 0, y: 5)
+        .appCardStyle()
     }
 
     var routeSuggestionsSection: some View {
@@ -130,8 +132,8 @@ struct AddRouteFormView: View {
                             .foregroundStyle(ttcRed)
                     }
                     .padding(12)
-                    .background(Color(.systemGray6))
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .background(AppDesign.fieldBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: AppDesign.smallRadius))
                 }
                 .buttonStyle(.plain)
             }

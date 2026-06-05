@@ -27,7 +27,7 @@ struct ContentView: View {
     @State private var routeSeverities: [UUID: AlertSeverity] = [:]
     @State private var sentNotificationKeys: Set<String> = []
     @State private var autoRefreshTask: Task<Void, Never>?
-    @ScaledMetric private var routeRowHeight = 108
+    @ScaledMetric private var routeRowHeight = 112
 
     static let savedRoutesKey = "savedRoutes"
     static let cachedAlertsKey = "cachedTTCAlerts"
@@ -37,8 +37,8 @@ struct ContentView: View {
         TTCAlertRoute(name: "32", status: "Delay reported", routeType: .bus, routeNumber: "32", nickname: "Eglinton West")
     ]
 
-    let ttcRed = Color(red: 0.85, green: 0.06, blue: 0.10)
-    let appBackground = Color(.systemGroupedBackground)
+    let ttcRed = AppDesign.ttcRed
+    let appBackground = AppDesign.appBackground
 
     var body: some View {
         NavigationStack {
@@ -47,12 +47,12 @@ struct ContentView: View {
                     .ignoresSafeArea()
 
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
+                    VStack(alignment: .leading, spacing: AppDesign.sectionSpacing) {
                         headerSection
                         addRouteSection
                         routesSection
                     }
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, AppDesign.screenHorizontalPadding)
                     .padding(.top, 12)
                     .padding(.bottom, 48)
                 }
@@ -135,7 +135,7 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 8) {
                 Text("TTC Route Alerts")
-                    .font(.system(.largeTitle, design: .rounded).weight(.bold))
+                    .font(.system(.title, design: .rounded).weight(.bold))
                     .foregroundStyle(.primary)
 
                 Text("Track only the TTC routes you care about.")
@@ -169,10 +169,7 @@ struct ContentView: View {
                 }
                 .frame(minHeight: 18)
             }
-            .padding(14)
-            .background(Color(.secondarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .shadow(color: .black.opacity(0.04), radius: 10, x: 0, y: 4)
+            .appCardStyle(padding: 14, cornerRadius: AppDesign.cardRadius)
 
             if let refreshErrorMessage {
                 HStack(spacing: 10) {
@@ -209,7 +206,7 @@ struct ContentView: View {
                 .padding(.vertical, 10)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color.orange.opacity(0.10))
-                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .clipShape(RoundedRectangle(cornerRadius: AppDesign.smallRadius))
                 .transition(.opacity)
             }
         }
@@ -632,12 +629,12 @@ struct EmptyRoutesView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Circle()
-                .fill(ttcRed.opacity(0.12))
-                .frame(width: 48, height: 48)
+            RoundedRectangle(cornerRadius: AppDesign.iconRadius)
+                .fill(ttcRed.opacity(0.09))
+                .frame(width: 44, height: 44)
                 .overlay {
                     Image(systemName: "plus")
-                        .font(.system(size: 20, weight: .semibold))
+                        .font(.system(size: 18, weight: .semibold))
                         .foregroundStyle(ttcRed)
                 }
 
@@ -650,9 +647,6 @@ struct EmptyRoutesView: View {
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .shadow(color: .black.opacity(0.06), radius: 12, x: 0, y: 5)
+        .appCardStyle(padding: 16)
     }
 }

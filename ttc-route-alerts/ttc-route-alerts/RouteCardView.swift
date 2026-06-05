@@ -11,19 +11,19 @@ struct RouteCardView: View {
     let ttcRed: Color
 
     var body: some View {
-        HStack(spacing: 14) {
-            Circle()
-                .fill(ttcRed)
-                .frame(width: 42, height: 42)
+        HStack(spacing: 13) {
+            RoundedRectangle(cornerRadius: AppDesign.iconRadius)
+                .fill(ttcRed.opacity(0.09))
+                .frame(width: 40, height: 40)
                 .overlay {
-                    Image(systemName: "tram.fill")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(.white)
+                    Image(systemName: AppDesign.routeIconName(for: route.routeType))
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(ttcRed)
                 }
 
             VStack(alignment: .leading, spacing: 8) {
                 Text(route.displayName)
-                    .font(.system(.headline, design: .rounded))
+                    .font(.system(.subheadline, design: .rounded).weight(.semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(2)
 
@@ -36,10 +36,7 @@ struct RouteCardView: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.tertiary)
         }
-        .padding(16)
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 4)
+        .appCardStyle(padding: 16)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(route.displayName), \(severity.rawValue)")
     }

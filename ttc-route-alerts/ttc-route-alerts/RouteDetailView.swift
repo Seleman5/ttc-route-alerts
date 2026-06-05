@@ -23,7 +23,7 @@ struct RouteDetailView: View {
                     detailHeader
                     alertsSection
                 }
-                .padding(.horizontal, 20)
+                .padding(.horizontal, AppDesign.screenHorizontalPadding)
                 .padding(.top, 16)
                 .padding(.bottom, 28)
             }
@@ -35,18 +35,18 @@ struct RouteDetailView: View {
     var detailHeader: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .top, spacing: 14) {
-                Circle()
-                    .fill(ttcRed)
-                    .frame(width: 56, height: 56)
+                RoundedRectangle(cornerRadius: AppDesign.iconRadius)
+                    .fill(ttcRed.opacity(0.09))
+                    .frame(width: 52, height: 52)
                     .overlay {
-                        Image(systemName: "tram.fill")
-                            .font(.system(size: 23, weight: .semibold))
-                            .foregroundStyle(.white)
+                        Image(systemName: AppDesign.routeIconName(for: route.routeType))
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(ttcRed)
                     }
 
                 VStack(alignment: .leading, spacing: 10) {
                     Text(route.displayName)
-                        .font(.system(.title2, design: .rounded).weight(.bold))
+                        .font(.system(.title3, design: .rounded).weight(.bold))
                         .foregroundStyle(.primary)
                         .fixedSize(horizontal: false, vertical: true)
 
@@ -80,11 +80,7 @@ struct RouteDetailView: View {
                 Spacer(minLength: 0)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(20)
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: .black.opacity(0.05), radius: 12, x: 0, y: 5)
+        .appCardStyle(padding: 20)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(route.displayName), \(severity.rawValue), last successful update \(lastUpdatedText)")
     }
@@ -133,11 +129,7 @@ struct RouteDetailView: View {
 
             Spacer(minLength: 0)
         }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-        .shadow(color: .black.opacity(0.04), radius: 10, x: 0, y: 4)
+        .appCardStyle(padding: 14, cornerRadius: AppDesign.smallRadius)
         .accessibilityElement(children: .combine)
     }
 }
