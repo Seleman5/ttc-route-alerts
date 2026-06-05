@@ -136,6 +136,33 @@ final class RouteMatcherTests: XCTestCase {
         XCTAssertEqual(matchingAlerts, [bus131Alert])
     }
 
+    func testEmptyRouteAlertCacheDoesNotFallBackToOldAlerts() {
+        let bus131 = savedRoute(routeID: "131_1", routeNumber: "131", nickname: "Nugget")
+        let oldBus131Alert = TTCAlert(
+            text: "131 Nugget: Detour via Markham Rd, Sheppard Ave E and Shorting Rd due to a collision.",
+            routeIDs: ["131"]
+        )
+
+        let matchingAlerts = RouteAlertStatus.matchingAlerts(
+            for: bus131,
+            cachedAlerts: [],
+            allAlerts: [oldBus131Alert]
+        )
+
+        XCTAssertTrue(matchingAlerts.isEmpty)
+    }
+
+    func testDisappearedAlertReturnsNormalWithLatestFeed() {
+        let bus131 = savedRoute(routeID: "131_1", routeNumber: "131", nickname: "Nugget")
+        let oldBus131Alert = TTCAlert(
+            text: "131 Nugget: Detour via Markham Rd, Sheppard Ave E and Shorting Rd due to a collision.",
+            routeIDs: ["131"]
+        )
+
+        XCTAssertEqual(RouteAlertStatus.severity(for: bus131, in: [oldBus131Alert]), .minor)
+        XCTAssertEqual(RouteAlertStatus.severity(for: bus131, in: []), .normal)
+    }
+
     func testSubwayLine5MatchesLine5EglintonAlert() {
         let line5 = savedRoute(routeType: .subway, routeID: "5", routeNumber: "5", nickname: "Eglinton")
         let alert = TTCAlert(
