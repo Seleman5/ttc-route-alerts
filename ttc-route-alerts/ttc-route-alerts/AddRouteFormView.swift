@@ -54,7 +54,9 @@ struct AddRouteFormView: View {
                 .background(Color(.systemGray6))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
 
-            routeSuggestionsSection
+            if !visibleSuggestedRoutes.isEmpty {
+                routeSuggestionsSection
+            }
 
             Divider()
                 .padding(.vertical, 2)
@@ -106,7 +108,7 @@ struct AddRouteFormView: View {
                 .fontWeight(.semibold)
                 .foregroundStyle(.secondary)
 
-            ForEach(filteredSuggestedRoutes) { suggestion in
+            ForEach(visibleSuggestedRoutes) { suggestion in
                 Button {
                     onSelectSuggestion(suggestion)
                 } label: {
@@ -134,5 +136,9 @@ struct AddRouteFormView: View {
                 .buttonStyle(.plain)
             }
         }
+    }
+
+    var visibleSuggestedRoutes: [SuggestedRoute] {
+        Array(filteredSuggestedRoutes.prefix(6))
     }
 }

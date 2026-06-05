@@ -61,6 +61,24 @@ final class RouteInputValidatorTests: XCTestCase {
         XCTAssertTrue(RouteInputValidator.routeAlreadySaved(newRoute, in: [savedRoute]))
     }
 
+    func testSavedRouteIsRemovedFromSuggestions() throws {
+        let savedRoute = try validatedRoute(from: "Bus 100", selectedRouteType: .bus)
+        let suggestions = [
+            SuggestedRoute(routeID: "100", routeType: .bus, routeNumber: "100", nickname: "Broadview"),
+            SuggestedRoute(routeID: "101", routeType: .bus, routeNumber: "101", nickname: "Downsview Park")
+        ]
+
+        let filteredSuggestions = RouteSuggestion.filteredSuggestions(
+            from: suggestions,
+            matching: "",
+            selectedRouteType: .bus,
+            excludingSavedRoutes: [savedRoute]
+        )
+
+        XCTAssertFalse(filteredSuggestions.contains { $0.routeNumber == "100" })
+        XCTAssertTrue(filteredSuggestions.contains { $0.routeNumber == "101" })
+    }
+
     private func validatedRoute(
         from routeInput: String,
         selectedRouteType: RouteType

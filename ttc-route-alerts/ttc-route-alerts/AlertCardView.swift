@@ -8,6 +8,7 @@ import SwiftUI
 struct AlertCardView: View {
     let alertText: String
     let severity: AlertSeverity
+    let lastUpdatedText: String
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -22,6 +23,11 @@ struct AlertCardView: View {
                     .font(.subheadline)
                     .foregroundStyle(.primary)
                     .fixedSize(horizontal: false, vertical: true)
+
+                Text("Last successful update: \(lastUpdatedText)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -34,6 +40,6 @@ struct AlertCardView: View {
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .shadow(color: .black.opacity(0.04), radius: 10, x: 0, y: 4)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(severity.rawValue): \(alertText)")
+        .accessibilityLabel("\(severity.rawValue): \(alertText). Last successful update: \(lastUpdatedText)")
     }
 }

@@ -60,11 +60,11 @@ struct RouteDetailView: View {
 
             HStack(spacing: 10) {
                 Image(systemName: "clock.arrow.circlepath")
-                    .font(.caption.weight(.semibold))
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(ttcRed)
-                    .frame(width: 24, height: 24)
-                    .background(ttcRed.opacity(0.12))
-                    .clipShape(Circle())
+                    .frame(width: 20, height: 20)
+                    .background(ttcRed.opacity(0.07))
+                    .clipShape(RoundedRectangle(cornerRadius: 5))
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Last Successful Update")
@@ -102,7 +102,11 @@ struct RouteDetailView: View {
                 noAlertsView
             } else {
                 ForEach(alerts, id: \.self) { alert in
-                    AlertCardView(alertText: alert.text, severity: AlertSeverity.forAlertText(alert.text))
+                    AlertCardView(
+                        alertText: alert.text,
+                        severity: AlertSeverity.forAlertText(alert.text),
+                        lastUpdatedText: lastUpdatedText
+                    )
                 }
             }
         }

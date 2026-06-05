@@ -21,11 +21,11 @@ struct HomeSectionHeaderView: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: systemImage)
-                .font(.caption.weight(.semibold))
+                .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(tint)
-                .frame(width: 24, height: 24)
-                .background(tint.opacity(0.12))
-                .clipShape(Circle())
+                .frame(width: 18, height: 18)
+                .background(tint.opacity(0.07))
+                .clipShape(RoundedRectangle(cornerRadius: 5))
 
             Text(title)
                 .font(.headline)

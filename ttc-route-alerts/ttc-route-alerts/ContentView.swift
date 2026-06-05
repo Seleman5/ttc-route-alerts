@@ -54,8 +54,13 @@ struct ContentView: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 12)
-                    .padding(.bottom, 28)
+                    .padding(.bottom, 48)
                 }
+                .safeAreaInset(edge: .bottom) {
+                    Color.clear
+                        .frame(height: 16)
+                }
+                .scrollDismissesKeyboard(.interactively)
                 .refreshable {
                     await refreshAlerts(shouldSendNotifications: true)
                 }
@@ -298,18 +303,12 @@ struct ContentView: View {
     }
 
     func updateFilteredSuggestedRoutes() {
-        let searchText = routeNumberInput.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-
-        if searchText.isEmpty {
-            filteredSuggestedRoutesCache = routeSuggestions.filter { suggestion in
-                suggestion.routeType == selectedRouteType
-            }
-            return
-        }
-
-        filteredSuggestedRoutesCache = routeSuggestions.filter { suggestion in
-            suggestion.matches(searchText)
-        }
+        filteredSuggestedRoutesCache = RouteSuggestion.filteredSuggestions(
+            from: routeSuggestions,
+            matching: routeNumberInput,
+            selectedRouteType: selectedRouteType,
+            excludingSavedRoutes: savedRoutes
+        )
     }
 
     func selectSuggestedRoute(_ suggestion: SuggestedRoute) {
@@ -419,6 +418,7 @@ struct ContentView: View {
         savedRoutes.remove(atOffsets: offsets)
         saveRoutes()
         rebuildRouteAlertCache()
+        updateFilteredSuggestedRoutes()
 
         if let editingRouteID, deletedRouteIDs.contains(editingRouteID) {
             clearRouteForm()
@@ -431,6 +431,7 @@ struct ContentView: View {
         }
         saveRoutes()
         rebuildRouteAlertCache()
+        updateFilteredSuggestedRoutes()
 
         if editingRouteID == route.id {
             clearRouteForm()

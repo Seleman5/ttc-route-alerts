@@ -83,6 +83,45 @@ enum RouteSuggestion {
         return matchingRoutes.first
     }
 
+    static func filteredSuggestions(
+        from suggestions: [SuggestedRoute],
+        matching searchText: String,
+        selectedRouteType: RouteType,
+        excludingSavedRoutes savedRoutes: [TTCAlertRoute]
+    ) -> [SuggestedRoute] {
+        let cleanedSearchText = searchText
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        return suggestions.filter { suggestion in
+            guard !isSuggestionAlreadySaved(suggestion, savedRoutes: savedRoutes) else {
+                return false
+            }
+
+            if cleanedSearchText.isEmpty {
+                return suggestion.routeType == selectedRouteType
+            }
+
+            return suggestion.matches(cleanedSearchText)
+        }
+    }
+
+    private static func isSuggestionAlreadySaved(
+        _ suggestion: SuggestedRoute,
+        savedRoutes: [TTCAlertRoute]
+    ) -> Bool {
+        savedRoutes.contains { savedRoute in
+            if let savedRouteID = savedRoute.routeID,
+               let suggestionRouteID = suggestion.routeID,
+               savedRouteID.caseInsensitiveCompare(suggestionRouteID) == .orderedSame {
+                return true
+            }
+
+            return savedRoute.routeType == suggestion.routeType
+                && savedRoute.routeNumber == suggestion.routeNumber
+        }
+    }
+
     static func normalizedRouteInput(_ input: String) -> String {
         var cleanedInput = input.trimmingCharacters(in: .whitespacesAndNewlines)
         var didRemovePrefix = true
