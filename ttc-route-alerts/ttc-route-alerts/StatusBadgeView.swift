@@ -17,5 +17,7 @@ struct StatusBadgeView: View {
             .padding(.vertical, 6)
             .background(severity.backgroundColor)
             .clipShape(Capsule())
+            .contentTransition(.opacity)
+            .animation(AppDesign.subtleAnimation, value: severity.rawValue)
     }
 }

@@ -8,17 +8,18 @@ import SwiftUI
 struct RouteCardView: View {
     let route: TTCAlertRoute
     let severity: AlertSeverity
-    let ttcRed: Color
 
     var body: some View {
+        let accentColor = AppDesign.routeAccentColor(for: route.routeType)
+
         HStack(alignment: .center, spacing: 14) {
             RoundedRectangle(cornerRadius: AppDesign.iconRadius)
-                .fill(ttcRed.opacity(0.09))
+                .fill(AppDesign.routeAccentBackground(for: route.routeType))
                 .frame(width: 40, height: 40)
                 .overlay {
                     Image(systemName: AppDesign.routeIconName(for: route.routeType))
                         .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(ttcRed)
+                        .foregroundStyle(accentColor)
                 }
 
             VStack(alignment: .leading, spacing: 8) {
@@ -26,15 +27,18 @@ struct RouteCardView: View {
                     .font(.system(.subheadline, design: .rounded).weight(.semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(2)
+                    .lineSpacing(1)
                     .fixedSize(horizontal: false, vertical: true)
 
                 StatusBadgeView(severity: severity)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .layoutPriority(1)
 
             Spacer(minLength: 8)
         }
         .appCardStyle(padding: 15)
+        .animation(AppDesign.subtleAnimation, value: severity.rawValue)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(route.displayName), \(severity.rawValue)")
     }

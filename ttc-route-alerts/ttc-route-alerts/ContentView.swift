@@ -27,7 +27,7 @@ struct ContentView: View {
     @State private var routeSeverities: [UUID: AlertSeverity] = [:]
     @State private var sentNotificationKeys: Set<String> = []
     @State private var autoRefreshTask: Task<Void, Never>?
-    @ScaledMetric private var routeRowHeight = 104
+    @ScaledMetric private var routeRowHeight = 120
 
     static let savedRoutesKey = "savedRoutes"
     static let cachedAlertsKey = "cachedTTCAlerts"
@@ -262,13 +262,14 @@ struct ContentView: View {
 
             if savedRoutes.isEmpty {
                 EmptyRoutesView(ttcRed: ttcRed)
+                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
             } else {
                 List {
                     ForEach(savedRoutes) { route in
                         NavigationLink {
                             RouteDetailView(route: route, severity: routeSeverity(for: route), alerts: matchingAlerts(for: route), lastUpdatedText: lastUpdatedText, ttcRed: ttcRed, appBackground: appBackground)
                         } label: {
-                            RouteCardView(route: route, severity: routeSeverity(for: route), ttcRed: ttcRed)
+                            RouteCardView(route: route, severity: routeSeverity(for: route))
                         }
                         .buttonStyle(.plain)
                             .accessibilityHint("Opens details for \(route.displayName).")
@@ -299,12 +300,15 @@ struct ContentView: View {
                 .listStyle(.plain)
                 .scrollDisabled(true)
                 .frame(height: CGFloat(savedRoutes.count) * routeRowHeight)
+                .transition(.opacity)
 
                 Text("Swipe left to edit or remove routes")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .transition(.opacity)
             }
         }
+        .animation(AppDesign.subtleAnimation, value: savedRoutes.map(\.id))
     }
 
     var lastUpdatedText: String {
@@ -370,7 +374,9 @@ struct ContentView: View {
             return
         }
 
-        savedRoutes.append(newRoute)
+        withAnimation(AppDesign.subtleAnimation) {
+            savedRoutes.append(newRoute)
+        }
         saveRoutes()
         rebuildRouteAlertCache()
         routeFormErrorMessage = nil
@@ -402,7 +408,9 @@ struct ContentView: View {
             return
         }
 
-        savedRoutes[routeIndex] = editedRoute
+        withAnimation(AppDesign.subtleAnimation) {
+            savedRoutes[routeIndex] = editedRoute
+        }
         saveRoutes()
         rebuildRouteAlertCache()
         routeFormErrorMessage = nil
@@ -432,7 +440,9 @@ struct ContentView: View {
 
     func deleteRoutes(at offsets: IndexSet) {
         let deletedRouteIDs = offsets.map { savedRoutes[$0].id }
-        savedRoutes.remove(atOffsets: offsets)
+        withAnimation(AppDesign.subtleAnimation) {
+            savedRoutes.remove(atOffsets: offsets)
+        }
         saveRoutes()
         rebuildRouteAlertCache()
         updateFilteredSuggestedRoutes()
@@ -443,8 +453,10 @@ struct ContentView: View {
     }
 
     func deleteRoute(_ route: TTCAlertRoute) {
-        savedRoutes.removeAll { savedRoute in
-            savedRoute.id == route.id
+        withAnimation(AppDesign.subtleAnimation) {
+            savedRoutes.removeAll { savedRoute in
+                savedRoute.id == route.id
+            }
         }
         saveRoutes()
         rebuildRouteAlertCache()
@@ -460,8 +472,10 @@ struct ContentView: View {
             return
         }
 
-        isRefreshing = true
-        refreshErrorMessage = nil
+        withAnimation(AppDesign.subtleAnimation) {
+            isRefreshing = true
+            refreshErrorMessage = nil
+        }
 
         do {
             ttcAlerts = try await TTCAlertsService().fetchAlertsFeed()
@@ -474,11 +488,15 @@ struct ContentView: View {
                 await sendNotificationsForAlertingRoutesIfNeeded()
             }
         } catch {
-            refreshErrorMessage = cachedAlertsMessage
+            withAnimation(AppDesign.subtleAnimation) {
+                refreshErrorMessage = cachedAlertsMessage
+            }
             print("Could not refresh TTC alerts: \(error.localizedDescription)")
         }
 
-        isRefreshing = false
+        withAnimation(AppDesign.subtleAnimation) {
+            isRefreshing = false
+        }
     }
 
     func startAutoRefreshIfNeeded() {
@@ -648,13 +666,13 @@ struct EmptyRoutesView: View {
     let ttcRed: Color
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .center, spacing: 12) {
             RoundedRectangle(cornerRadius: AppDesign.iconRadius)
                 .fill(ttcRed.opacity(0.09))
-                .frame(width: 44, height: 44)
+                .frame(width: 48, height: 48)
                 .overlay {
-                    Image(systemName: "plus")
-                        .font(.system(size: 18, weight: .semibold))
+                    Image(systemName: "plus.viewfinder")
+                        .font(.system(size: 20, weight: .semibold))
                         .foregroundStyle(ttcRed)
                 }
 
@@ -662,11 +680,13 @@ struct EmptyRoutesView: View {
                 .font(.system(.headline, design: .rounded))
                 .foregroundStyle(.primary)
 
-            Text("Add a subway, bus, or streetcar route above to start tracking TTC alerts.")
+            Text("Add a subway, bus, or streetcar route to start tracking alerts.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .appCardStyle(padding: 16)
+        .frame(maxWidth: .infinity, alignment: .center)
+        .appCardStyle(padding: 20)
     }
 }

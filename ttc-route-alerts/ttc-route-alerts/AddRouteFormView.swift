@@ -33,6 +33,12 @@ struct AddRouteFormView: View {
                 }
             }
             .pickerStyle(.segmented)
+            .controlSize(.small)
+            .tint(ttcRed)
+            .padding(3)
+            .background(AppDesign.insetBackground)
+            .clipShape(RoundedRectangle(cornerRadius: AppDesign.smallRadius))
+            .accessibilityLabel("Route type")
 
             TextField("Route number or name, like 1, 34, or 501", text: $routeNumberInput)
                 .textInputAutocapitalization(.words)
@@ -56,6 +62,7 @@ struct AddRouteFormView: View {
 
             if !visibleSuggestedRoutes.isEmpty {
                 routeSuggestionsSection
+                    .transition(.opacity.combined(with: .move(edge: .top)))
             }
 
             Divider()
@@ -100,6 +107,7 @@ struct AddRouteFormView: View {
             }
         }
         .appCardStyle()
+        .animation(AppDesign.subtleAnimation, value: visibleSuggestedRoutes.count)
     }
 
     var routeSuggestionsSection: some View {
@@ -113,12 +121,22 @@ struct AddRouteFormView: View {
                 Button {
                     onSelectSuggestion(suggestion)
                 } label: {
-                    HStack {
+                    HStack(spacing: 12) {
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(AppDesign.routeAccentBackground(for: suggestion.routeType))
+                            .frame(width: 30, height: 30)
+                            .overlay {
+                                Image(systemName: AppDesign.routeIconName(for: suggestion.routeType))
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(AppDesign.routeAccentColor(for: suggestion.routeType))
+                            }
+
                         VStack(alignment: .leading, spacing: 4) {
                             Text(suggestion.displayName)
                                 .font(.subheadline)
                                 .fontWeight(.semibold)
                                 .foregroundStyle(.primary)
+                                .lineLimit(2)
 
                             Text(suggestion.routeType.rawValue)
                                 .font(.caption)
@@ -128,7 +146,8 @@ struct AddRouteFormView: View {
                         Spacer()
 
                         Image(systemName: "plus.circle.fill")
-                            .foregroundStyle(ttcRed)
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(AppDesign.routeAccentColor(for: suggestion.routeType))
                     }
                     .padding(12)
                     .background(AppDesign.fieldBackground)

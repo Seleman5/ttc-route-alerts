@@ -13,6 +13,10 @@ struct RouteDetailView: View {
     let ttcRed: Color
     let appBackground: Color
 
+    var routeAccentColor: Color {
+        AppDesign.routeAccentColor(for: route.routeType)
+    }
+
     var body: some View {
         ZStack {
             appBackground
@@ -36,22 +40,25 @@ struct RouteDetailView: View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .top, spacing: 14) {
                 RoundedRectangle(cornerRadius: AppDesign.iconRadius)
-                    .fill(ttcRed.opacity(0.09))
+                    .fill(AppDesign.routeAccentBackground(for: route.routeType))
                     .frame(width: 52, height: 52)
                     .overlay {
                         Image(systemName: AppDesign.routeIconName(for: route.routeType))
                             .font(.system(size: 22, weight: .semibold))
-                            .foregroundStyle(ttcRed)
+                            .foregroundStyle(routeAccentColor)
                     }
 
                 VStack(alignment: .leading, spacing: 10) {
                     Text(route.displayName)
                         .font(.system(.title3, design: .rounded).weight(.bold))
                         .foregroundStyle(.primary)
+                        .lineLimit(3)
+                        .lineSpacing(1)
                         .fixedSize(horizontal: false, vertical: true)
 
                     StatusBadgeView(severity: severity)
                 }
+                .layoutPriority(1)
 
                 Spacer(minLength: 0)
             }
@@ -61,9 +68,9 @@ struct RouteDetailView: View {
             HStack(spacing: 10) {
                 Image(systemName: "clock.arrow.circlepath")
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(ttcRed)
+                    .foregroundStyle(routeAccentColor)
                     .frame(width: 20, height: 20)
-                    .background(ttcRed.opacity(0.07))
+                    .background(routeAccentColor.opacity(0.08))
                     .clipShape(RoundedRectangle(cornerRadius: 5))
 
                 VStack(alignment: .leading, spacing: 2) {

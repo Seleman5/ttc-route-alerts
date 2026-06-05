@@ -19,8 +19,9 @@ enum AppDesign {
     static let screenHorizontalPadding: CGFloat = 20
     static let sectionSpacing: CGFloat = 24
 
-    static let softShadow = Color.black.opacity(0.04)
+    static let softShadow = Color.black.opacity(0.045)
     static let subtleBorder = Color.primary.opacity(0.06)
+    static let subtleAnimation = Animation.easeInOut(duration: 0.22)
 
     static func routeIconName(for routeType: RouteType?) -> String {
         switch routeType {
@@ -33,6 +34,23 @@ enum AppDesign {
         case nil:
             return "arrow.triangle.branch"
         }
+    }
+
+    static func routeAccentColor(for routeType: RouteType?) -> Color {
+        switch routeType {
+        case .bus:
+            return Color(red: 0.18, green: 0.42, blue: 0.72)
+        case .streetcar:
+            return Color(red: 0.82, green: 0.38, blue: 0.12)
+        case .subway:
+            return ttcRed
+        case nil:
+            return ttcRed
+        }
+    }
+
+    static func routeAccentBackground(for routeType: RouteType?) -> Color {
+        routeAccentColor(for: routeType).opacity(0.10)
     }
 }
 
@@ -50,6 +68,6 @@ extension View {
                     .stroke(AppDesign.subtleBorder, lineWidth: 1)
             }
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
-            .shadow(color: AppDesign.softShadow, radius: 12, x: 0, y: 5)
+            .shadow(color: AppDesign.softShadow, radius: 14, x: 0, y: 5)
     }
 }
