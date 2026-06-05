@@ -23,9 +23,12 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     notificationsSection
                     refreshSection
+                    appStatusSection
                     aboutSection
                 }
-                .padding(20)
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 28)
             }
         }
         .navigationTitle("Settings")
@@ -37,49 +40,85 @@ struct SettingsView: View {
     }
 
     var notificationsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Notifications")
-                .font(.headline)
+        VStack(alignment: .leading, spacing: 14) {
+            HomeSectionHeaderView(title: "Notifications", systemImage: "bell.badge", tint: ttcRed)
 
-            Toggle("Route alert notifications", isOn: $notificationsEnabled)
+            Toggle(isOn: $notificationsEnabled) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Route alert notifications")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
 
-            Text("When enabled, this app can notify you after you refresh and one of your saved routes has an alert.")
+                    Text("Get notified when a refreshed saved route has an alert.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Text("Notifications are sent only for saved routes with matching TTC alerts after an app refresh or an allowed background refresh.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
 
             if let notificationMessage {
-                Text(notificationMessage)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                SettingsMessageView(message: notificationMessage)
             }
         }
         .settingsCardStyle()
     }
 
     var refreshSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Refresh Preferences")
-                .font(.headline)
+        VStack(alignment: .leading, spacing: 14) {
+            HomeSectionHeaderView(title: "Refresh", systemImage: "arrow.clockwise", tint: ttcRed)
 
-            Picker("Refresh alerts", selection: $refreshPreference) {
-                ForEach(RefreshPreference.allCases) { preference in
-                    Text(preference.rawValue)
-                        .tag(preference.rawValue)
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Auto refresh")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+
+                    Text("Choose how often the app checks while it is open.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
-            }
-            .pickerStyle(.menu)
 
-            Text("Automatic refresh runs only while the app is open.")
+                Spacer(minLength: 8)
+
+                Picker("Refresh alerts", selection: $refreshPreference) {
+                    ForEach(RefreshPreference.allCases) { preference in
+                        Text(preference.rawValue)
+                            .tag(preference.rawValue)
+                    }
+                }
+                .pickerStyle(.menu)
+            }
+
+            Text("Background refresh uses the same preference as a request to iOS, but iOS decides the actual timing based on battery, network, and usage patterns.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .settingsCardStyle()
+    }
+
+    var appStatusSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HomeSectionHeaderView(title: "App Status", systemImage: "checklist", tint: ttcRed)
+
+            SettingsInfoRow(title: "Notifications", value: notificationsEnabled ? "On" : "Off")
+            SettingsInfoRow(title: "Refresh", value: refreshPreference)
+
+            Text("Manual refresh and pull-to-refresh are always available from the route list.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .settingsCardStyle()
     }
 
     var aboutSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("About")
-                .font(.headline)
+            HomeSectionHeaderView(title: "About", systemImage: "info.circle", tint: ttcRed)
 
             SettingsInfoRow(title: "App", value: "TTC Route Alerts")
             SettingsInfoRow(title: "Description", value: "Track saved TTC routes and see matching service alerts.")
@@ -172,13 +211,30 @@ struct SettingsInfoRow: View {
     }
 }
 
+struct SettingsMessageView: View {
+    let message: String
+
+    var body: some View {
+        Text(message)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(.tertiarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .accessibilityLabel(message)
+    }
+}
+
 private extension View {
     func settingsCardStyle() -> some View {
         self
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(16)
+            .padding(18)
             .background(Color(.secondarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 18))
-            .shadow(color: .black.opacity(0.06), radius: 12, x: 0, y: 5)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .shadow(color: .black.opacity(0.05), radius: 12, x: 0, y: 5)
     }
 }
