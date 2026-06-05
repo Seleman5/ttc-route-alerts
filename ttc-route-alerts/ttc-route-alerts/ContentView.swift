@@ -197,115 +197,18 @@ struct ContentView: View {
     }
 
     var addRouteSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(editingRouteID == nil ? "Add Route" : "Edit Route")
-                .font(.headline)
-
-            Picker("Route Type", selection: $selectedRouteType) {
-                ForEach(RouteType.allCases) { routeType in
-                    Text(routeType.rawValue)
-                        .tag(routeType)
-                }
-            }
-            .pickerStyle(.segmented)
-
-            TextField("Route number or name, like 1, 34, or 501", text: $routeNumberInput)
-                .textInputAutocapitalization(.words)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 12)
-                .background(Color(.systemGray6))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-
-            if let routeFormErrorMessage {
-                Text(routeFormErrorMessage)
-                    .font(.caption)
-                    .foregroundStyle(.red)
-            }
-
-            TextField("Optional nickname, like Queen", text: $routeNicknameInput)
-                .textInputAutocapitalization(.words)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 12)
-                .background(Color(.systemGray6))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-
-            routeSuggestionsSection
-
-            Button {
-                saveRouteForm()
-            } label: {
-                Text(editingRouteID == nil ? "Add Route" : "Save Changes")
-                    .fontWeight(.semibold)
-                    .frame(maxWidth: .infinity)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 12)
-                    .foregroundStyle(.white)
-                    .background(ttcRed)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(editingRouteID == nil ? "Add route" : "Save changes")
-            .accessibilityHint(editingRouteID == nil ? "Adds the selected TTC route to your saved routes." : "Saves changes to this TTC route.")
-
-            if editingRouteID != nil {
-                Button {
-                    clearRouteForm()
-                } label: {
-                    Text("Cancel")
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 12)
-                        .foregroundStyle(ttcRed)
-                        .background(ttcRed.opacity(0.10))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(16)
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .shadow(color: .black.opacity(0.06), radius: 14, x: 0, y: 6)
-    }
-
-    var routeSuggestionsSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Suggested Routes")
-                .font(.subheadline)
-                .fontWeight(.semibold)
-                .foregroundStyle(.secondary)
-
-            ForEach(filteredSuggestedRoutes) { suggestion in
-                Button {
-                    selectSuggestedRoute(suggestion)
-                } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(suggestion.displayName)
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                                .foregroundStyle(.primary)
-
-                            Text(suggestion.routeType.rawValue)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        Spacer()
-
-                        Image(systemName: "plus.circle.fill")
-                            .foregroundStyle(ttcRed)
-                    }
-                    .padding(12)
-                    .background(Color(.systemGray6))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                }
-                .buttonStyle(.plain)
-            }
-        }
+        AddRouteFormView(
+            selectedRouteType: $selectedRouteType,
+            routeNumberInput: $routeNumberInput,
+            routeNicknameInput: $routeNicknameInput,
+            routeFormErrorMessage: routeFormErrorMessage,
+            editingRouteID: editingRouteID,
+            filteredSuggestedRoutes: filteredSuggestedRoutes,
+            ttcRed: ttcRed,
+            onSave: saveRouteForm,
+            onCancel: clearRouteForm,
+            onSelectSuggestion: selectSuggestedRoute
+        )
     }
 
     var routesSection: some View {
@@ -321,7 +224,7 @@ struct ContentView: View {
                         NavigationLink {
                             RouteDetailView(route: route, severity: routeSeverity(for: route), alerts: matchingAlerts(for: route), lastUpdatedText: lastUpdatedText, ttcRed: ttcRed, appBackground: appBackground)
                         } label: {
-                            RouteCard(route: route, severity: routeSeverity(for: route), ttcRed: ttcRed)
+                            RouteCardView(route: route, severity: routeSeverity(for: route), ttcRed: ttcRed)
                         }
                         .buttonStyle(.plain)
                             .accessibilityHint("Opens details for \(route.displayName).")
@@ -728,174 +631,5 @@ struct EmptyRoutesView: View {
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 18))
         .shadow(color: .black.opacity(0.06), radius: 12, x: 0, y: 5)
-    }
-}
-
-struct RouteCard: View {
-    let route: TTCAlertRoute
-    let severity: AlertSeverity
-    let ttcRed: Color
-
-    var body: some View {
-        HStack(spacing: 14) {
-            Circle()
-                .fill(ttcRed)
-                .frame(width: 42, height: 42)
-                .overlay {
-                    Image(systemName: "tram.fill")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(.white)
-                }
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text(route.displayName)
-                    .font(.system(.headline, design: .rounded))
-                    .foregroundStyle(.primary)
-
-                StatusBadge(severity: severity)
-            }
-
-            Spacer()
-        }
-        .padding(16)
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .shadow(color: .black.opacity(0.06), radius: 12, x: 0, y: 5)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(route.displayName), \(severity.rawValue)")
-    }
-}
-
-struct RouteDetailView: View {
-    let route: TTCAlertRoute
-    let severity: AlertSeverity
-    let alerts: [TTCAlert]
-    let lastUpdatedText: String
-    let ttcRed: Color
-    let appBackground: Color
-
-    var body: some View {
-        ZStack {
-            appBackground
-                .ignoresSafeArea()
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    detailHeader
-                    lastUpdatedSection
-                    alertsSection
-                }
-                .padding(20)
-            }
-        }
-        .navigationTitle(route.displayName)
-        .navigationBarTitleDisplayMode(.inline)
-    }
-
-    var detailHeader: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Circle()
-                .fill(ttcRed)
-                .frame(width: 54, height: 54)
-                .overlay {
-                    Image(systemName: "tram.fill")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(.white)
-                }
-
-            Text(route.displayName)
-                .font(.system(.title, design: .rounded).weight(.bold))
-                .foregroundStyle(.primary)
-
-            StatusBadge(severity: severity)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(18)
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .shadow(color: .black.opacity(0.06), radius: 14, x: 0, y: 6)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(route.displayName), \(severity.rawValue)")
-    }
-
-    var lastUpdatedSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Last Successful Update")
-                .font(.headline)
-
-            Text(lastUpdatedText)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .shadow(color: .black.opacity(0.06), radius: 12, x: 0, y: 5)
-    }
-
-    var alertsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("TTC Alerts")
-                .font(.headline)
-
-            if alerts.isEmpty {
-                Text("No alerts for this route right now.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            } else {
-                ForEach(alerts, id: \.self) { alert in
-                    AlertCard(alertText: alert.text, severity: AlertSeverity.forAlertText(alert.text))
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .shadow(color: .black.opacity(0.06), radius: 12, x: 0, y: 5)
-    }
-}
-
-struct AlertCard: View {
-    let alertText: String
-    let severity: AlertSeverity
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            RoundedRectangle(cornerRadius: 3)
-                .fill(severity.textColor)
-                .frame(width: 5)
-
-            VStack(alignment: .leading, spacing: 10) {
-                StatusBadge(severity: severity)
-
-                Text(alertText)
-                    .font(.subheadline)
-                    .foregroundStyle(.primary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(severity.backgroundColor.opacity(0.55))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(severity.rawValue): \(alertText)")
-    }
-}
-
-struct StatusBadge: View {
-    let severity: AlertSeverity
-
-    var body: some View {
-        Text(severity.rawValue)
-            .font(.caption)
-            .fontWeight(.semibold)
-            .foregroundStyle(severity.textColor)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(severity.backgroundColor)
-            .clipShape(Capsule())
     }
 }
