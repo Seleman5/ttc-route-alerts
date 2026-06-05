@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		96798A002FBEF100002B92DB /* SwiftProtobuf in Frameworks */ = {isa = PBXBuildFile; productRef = 96798A012FBEF100002B92DB /* SwiftProtobuf */; };
-		96798A292FC10000002B92DB /* TTCStatusWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 96798A202FC10000002B92DB /* TTCStatusWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -19,33 +18,11 @@
 			remoteGlobalIDString = 967989EC2FBD6033002B92DB;
 			remoteInfo = "ttc-route-alerts";
 		};
-		96798A2C2FC10000002B92DB /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 967989E52FBD6033002B92DB /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 96798A252FC10000002B92DB;
-			remoteInfo = TTCStatusWidget;
-		};
 /* End PBXContainerItemProxy section */
-
-/* Begin PBXCopyFilesBuildPhase section */
-		96798A2A2FC10000002B92DB /* Embed App Extensions */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 13;
-			files = (
-				96798A292FC10000002B92DB /* TTCStatusWidget.appex in Embed App Extensions */,
-			);
-			name = "Embed App Extensions";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		967989ED2FBD6033002B92DB /* ttc-route-alerts.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "ttc-route-alerts.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		96798A102FBF0000002B92DB /* ttc-route-alertsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "ttc-route-alertsTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
-		96798A202FC10000002B92DB /* TTCStatusWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = TTCStatusWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -57,11 +34,6 @@
 		96798A112FBF0000002B92DB /* ttc-route-alertsTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "ttc-route-alertsTests";
-			sourceTree = "<group>";
-		};
-		96798A212FC10000002B92DB /* TTCStatusWidget */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = TTCStatusWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -82,13 +54,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		96798A222FC10000002B92DB /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -97,7 +62,6 @@
 			children = (
 				967989EF2FBD6033002B92DB /* ttc-route-alerts */,
 				96798A112FBF0000002B92DB /* ttc-route-alertsTests */,
-				96798A212FC10000002B92DB /* TTCStatusWidget */,
 				967989EE2FBD6033002B92DB /* Products */,
 			);
 			sourceTree = "<group>";
@@ -107,7 +71,6 @@
 			children = (
 				967989ED2FBD6033002B92DB /* ttc-route-alerts.app */,
 				96798A102FBF0000002B92DB /* ttc-route-alertsTests.xctest */,
-				96798A202FC10000002B92DB /* TTCStatusWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -122,12 +85,10 @@
 				967989E92FBD6033002B92DB /* Sources */,
 				967989EA2FBD6033002B92DB /* Frameworks */,
 				967989EB2FBD6033002B92DB /* Resources */,
-				96798A2A2FC10000002B92DB /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				96798A2B2FC10000002B92DB /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				967989EF2FBD6033002B92DB /* ttc-route-alerts */,
@@ -163,28 +124,6 @@
 			productReference = 96798A102FBF0000002B92DB /* ttc-route-alertsTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		96798A252FC10000002B92DB /* TTCStatusWidget */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 96798A282FC10000002B92DB /* Build configuration list for PBXNativeTarget "TTCStatusWidget" */;
-			buildPhases = (
-				96798A232FC10000002B92DB /* Sources */,
-				96798A222FC10000002B92DB /* Frameworks */,
-				96798A242FC10000002B92DB /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			fileSystemSynchronizedGroups = (
-				96798A212FC10000002B92DB /* TTCStatusWidget */,
-			);
-			name = TTCStatusWidget;
-			packageProductDependencies = (
-			);
-			productName = TTCStatusWidget;
-			productReference = 96798A202FC10000002B92DB /* TTCStatusWidget.appex */;
-			productType = "com.apple.product-type.app-extension";
-		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -201,9 +140,6 @@
 					96798A152FBF0000002B92DB = {
 						CreatedOnToolsVersion = 26.5;
 						TestTargetID = 967989EC2FBD6033002B92DB;
-					};
-					96798A252FC10000002B92DB = {
-						CreatedOnToolsVersion = 26.5;
 					};
 				};
 			};
@@ -226,7 +162,6 @@
 			targets = (
 				967989EC2FBD6033002B92DB /* ttc-route-alerts */,
 				96798A152FBF0000002B92DB /* ttc-route-alertsTests */,
-				96798A252FC10000002B92DB /* TTCStatusWidget */,
 			);
 		};
 /* End PBXProject section */
@@ -240,13 +175,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		96798A142FBF0000002B92DB /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		96798A242FC10000002B92DB /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -270,13 +198,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		96798A232FC10000002B92DB /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -284,11 +205,6 @@
 			isa = PBXTargetDependency;
 			target = 967989EC2FBD6033002B92DB /* ttc-route-alerts */;
 			targetProxy = 96798A172FBF0000002B92DB /* PBXContainerItemProxy */;
-		};
-		96798A2B2FC10000002B92DB /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 96798A252FC10000002B92DB /* TTCStatusWidget */;
-			targetProxy = 96798A2C2FC10000002B92DB /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -417,7 +333,6 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = "ttc-route-alerts/ttc-route-alerts.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = AUQ939W6N5;
@@ -445,7 +360,6 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = "ttc-route-alerts/ttc-route-alerts.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = AUQ939W6N5;
@@ -514,58 +428,6 @@
 			};
 			name = Release;
 		};
-		96798A262FC10000002B92DB /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				APPLICATION_EXTENSION_API_ONLY = YES;
-				CODE_SIGN_ENTITLEMENTS = TTCStatusWidget/TTCStatusWidget.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = AUQ939W6N5;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = "TTCStatusWidget-Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.sully.ttc-route-alerts.TTCStatusWidget";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
-		96798A272FC10000002B92DB /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				APPLICATION_EXTENSION_API_ONLY = YES;
-				CODE_SIGN_ENTITLEMENTS = TTCStatusWidget/TTCStatusWidget.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = AUQ939W6N5;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = "TTCStatusWidget-Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.sully.ttc-route-alerts.TTCStatusWidget";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
-		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -592,15 +454,6 @@
 			buildConfigurations = (
 				96798A182FBF0000002B92DB /* Debug */,
 				96798A192FBF0000002B92DB /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		96798A282FC10000002B92DB /* Build configuration list for PBXNativeTarget "TTCStatusWidget" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				96798A262FC10000002B92DB /* Debug */,
-				96798A272FC10000002B92DB /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

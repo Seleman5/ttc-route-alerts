@@ -29,6 +29,28 @@
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES"
       shouldAutocreateTestPlan = "YES">
+      <Testables>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "96798A152FBF0000002B92DB"
+               BuildableName = "ttc-route-alertsTests.xctest"
+               BlueprintName = "ttc-route-alertsTests"
+               ReferencedContainer = "container:ttc-route-alerts.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+      </Testables>
+      <MacroExpansion>
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "967989EC2FBD6033002B92DB"
+            BuildableName = "ttc-route-alerts.app"
+            BlueprintName = "ttc-route-alerts"
+            ReferencedContainer = "container:ttc-route-alerts.xcodeproj">
+         </BuildableReference>
+      </MacroExpansion>
    </TestAction>
    <LaunchAction
       buildConfiguration = "Debug"

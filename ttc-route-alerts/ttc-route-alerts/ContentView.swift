@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import WidgetKit
 
 struct ContentView: View {
     @AppStorage("notificationsEnabled") private var notificationsEnabled = false
@@ -33,8 +32,6 @@ struct ContentView: View {
     static let savedRoutesKey = "savedRoutes"
     static let cachedAlertsKey = "cachedTTCAlerts"
     static let lastUpdatedKey = "lastUpdated"
-    static let appGroupIdentifier = "group.com.sully.ttc-route-alerts"
-    static let widgetSnapshotKey = "widgetRouteStatusSnapshot"
     static let starterRoutes = [
         TTCAlertRoute(name: "1", status: "No major issues", routeType: .subway, routeNumber: "1", nickname: "Yonge-University"),
         TTCAlertRoute(name: "32", status: "Delay reported", routeType: .bus, routeNumber: "32", nickname: "Eglinton West")
@@ -635,7 +632,6 @@ struct ContentView: View {
 
         routeAlertMatches = newRouteAlertMatches
         routeSeverities = newRouteSeverities
-        saveWidgetSnapshot()
     }
 
     func matchingAlertsWithoutCache(for route: TTCAlertRoute) -> [TTCAlert] {
@@ -699,48 +695,10 @@ struct ContentView: View {
     func saveLastUpdatedDate() {
         UserDefaults.standard.set(lastUpdatedDate, forKey: ContentView.lastUpdatedKey)
     }
-
-    func saveWidgetSnapshot() {
-        guard let sharedDefaults = UserDefaults(suiteName: ContentView.appGroupIdentifier) else {
-            return
-        }
-
-        let routeStatuses = savedRoutes.map { route in
-            WidgetRouteStatus(
-                id: route.id,
-                displayName: route.displayName,
-                severity: routeSeverity(for: route).rawValue
-            )
-        }
-
-        let snapshot = WidgetStatusSnapshot(
-            routes: routeStatuses,
-            lastUpdatedDate: lastUpdatedDate
-        )
-
-        do {
-            let encodedSnapshot = try JSONEncoder().encode(snapshot)
-            sharedDefaults.set(encodedSnapshot, forKey: ContentView.widgetSnapshotKey)
-            WidgetCenter.shared.reloadAllTimelines()
-        } catch {
-            print("Could not save widget snapshot")
-        }
-    }
 }
 
 #Preview {
     ContentView()
-}
-
-struct WidgetRouteStatus: Codable, Identifiable {
-    let id: UUID
-    let displayName: String
-    let severity: String
-}
-
-struct WidgetStatusSnapshot: Codable {
-    let routes: [WidgetRouteStatus]
-    let lastUpdatedDate: Date?
 }
 
 struct EmptyRoutesView: View {
