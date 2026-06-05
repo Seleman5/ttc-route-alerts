@@ -66,9 +66,7 @@ enum BackgroundAlertRefreshManager {
             saveCachedAlerts(alerts)
             saveLastUpdatedDate(lastUpdatedDate)
 
-            if notificationsAreEnabled() {
-                await sendNotificationsForAlertingRoutes(alerts)
-            }
+            await processAlertNotifications(alerts, shouldSendNotifications: notificationsAreEnabled())
 
             return true
         } catch {
@@ -77,32 +75,23 @@ enum BackgroundAlertRefreshManager {
         }
     }
 
-    private static func sendNotificationsForAlertingRoutes(_ alerts: [TTCAlert]) async {
+    private static func processAlertNotifications(_ alerts: [TTCAlert], shouldSendNotifications: Bool) async {
         let savedRoutes = ContentView.loadRoutes()
 
         for route in savedRoutes {
             let matchingAlerts = RouteAlertStatus.matchingAlerts(for: route, in: alerts)
-            let severity = AlertSeverity.strongestSeverity(in: matchingAlerts.map(\.text))
+            let newNotifications = RouteAlertNotificationManager.newAlertNotifications(
+                for: route,
+                matchingAlerts: matchingAlerts
+            )
 
-            guard severity != .normal else {
+            guard shouldSendNotifications else {
                 continue
             }
 
-            let notificationKey = RouteAlertNotificationManager.notificationKey(
-                for: route,
-                severity: severity,
-                alerts: matchingAlerts
-            )
-
-            guard !RouteAlertNotificationManager.hasRecentlySentNotification(identifier: notificationKey) else {
-                continue
+            for notification in newNotifications {
+                await RouteAlertNotificationManager.scheduleRouteAlertNotification(notification)
             }
-
-            await RouteAlertNotificationManager.scheduleRouteAlertNotification(
-                for: route,
-                severity: severity,
-                identifier: notificationKey
-            )
         }
     }
 

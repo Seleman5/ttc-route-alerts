@@ -25,7 +25,6 @@ struct ContentView: View {
     @State private var filteredSuggestedRoutesCache: [SuggestedRoute] = []
     @State private var routeAlertMatches: [UUID: [TTCAlert]] = [:]
     @State private var routeSeverities: [UUID: AlertSeverity] = [:]
-    @State private var sentNotificationKeys: Set<String> = []
     @State private var autoRefreshTask: Task<Void, Never>?
     @ScaledMetric private var routeRowHeight = 120
 
@@ -484,9 +483,7 @@ struct ContentView: View {
             saveCachedAlerts()
             saveLastUpdatedDate()
 
-            if shouldSendNotifications {
-                await sendNotificationsForAlertingRoutesIfNeeded()
-            }
+            await processAlertNotificationsAfterRefresh(shouldSendNotifications: shouldSendNotifications)
         } catch {
             withAnimation(AppDesign.subtleAnimation) {
                 refreshErrorMessage = cachedAlertsMessage
@@ -528,38 +525,20 @@ struct ContentView: View {
         autoRefreshTask = nil
     }
 
-    func sendNotificationsForAlertingRoutesIfNeeded() async {
-        guard notificationsEnabled else {
-            return
-        }
-
+    func processAlertNotificationsAfterRefresh(shouldSendNotifications: Bool) async {
         for route in savedRoutes {
             let alerts = matchingAlerts(for: route)
-            let severity = AlertSeverity.strongestSeverity(in: alerts.map(\.text))
+            let newNotifications = RouteAlertNotificationManager.newAlertNotifications(
+                for: route,
+                matchingAlerts: alerts
+            )
 
-            guard severity != .normal else {
+            guard shouldSendNotifications, notificationsEnabled else {
                 continue
             }
 
-            let notificationKey = RouteAlertNotificationManager.notificationKey(
-                for: route,
-                severity: severity,
-                alerts: alerts
-            )
-
-            guard !sentNotificationKeys.contains(notificationKey),
-                  !RouteAlertNotificationManager.hasRecentlySentNotification(identifier: notificationKey) else {
-                continue
-            }
-
-            let didScheduleNotification = await RouteAlertNotificationManager.scheduleRouteAlertNotification(
-                for: route,
-                severity: severity,
-                identifier: notificationKey
-            )
-
-            if didScheduleNotification {
-                sentNotificationKeys.insert(notificationKey)
+            for notification in newNotifications {
+                await RouteAlertNotificationManager.scheduleRouteAlertNotification(notification)
             }
         }
     }
