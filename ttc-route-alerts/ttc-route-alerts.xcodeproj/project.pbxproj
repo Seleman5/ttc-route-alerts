@@ -10,6 +10,16 @@
 		96798A002FBEF100002B92DB /* SwiftProtobuf in Frameworks */ = {isa = PBXBuildFile; productRef = 96798A012FBEF100002B92DB /* SwiftProtobuf */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		96798A172FBF0000002B92DB /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 967989E52FBD6033002B92DB /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 967989EC2FBD6033002B92DB;
+			remoteInfo = "ttc-route-alerts";
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		967989ED2FBD6033002B92DB /* ttc-route-alerts.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "ttc-route-alerts.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		96798A102FBF0000002B92DB /* ttc-route-alertsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "ttc-route-alertsTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -115,16 +125,6 @@
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
-
-/* Begin PBXContainerItemProxy section */
-		96798A172FBF0000002B92DB /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 967989E52FBD6033002B92DB /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 967989EC2FBD6033002B92DB;
-			remoteInfo = "ttc-route-alerts";
-		};
-/* End PBXContainerItemProxy section */
 
 /* Begin PBXProject section */
 		967989E52FBD6033002B92DB /* Project object */ = {
@@ -335,6 +335,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = AUQ939W6N5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
@@ -361,6 +362,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = AUQ939W6N5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;

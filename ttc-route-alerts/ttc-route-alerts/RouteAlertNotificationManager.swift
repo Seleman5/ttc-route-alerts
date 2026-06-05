@@ -7,6 +7,8 @@ import Foundation
 import UserNotifications
 
 enum RouteAlertNotificationManager {
+    private static let sentNotificationKeysKey = "sentRouteAlertNotificationKeys"
+
     static func configureForegroundNotifications() {
         UNUserNotificationCenter.current().delegate = LocalNotificationDelegate.shared
     }
@@ -32,11 +34,16 @@ enum RouteAlertNotificationManager {
         }
     }
 
+    @discardableResult
     static func scheduleRouteAlertNotification(
         for route: TTCAlertRoute,
         severity: AlertSeverity,
         identifier: String
-    ) async {
+    ) async -> Bool {
+        guard !hasRecentlySentNotification(identifier: identifier) else {
+            return false
+        }
+
         let content = UNMutableNotificationContent()
         content.title = "TTC Route Alert"
         content.body = "\(routeTitle(for: route)) has a \(severity.rawValue)"
@@ -50,8 +57,11 @@ enum RouteAlertNotificationManager {
 
         do {
             try await UNUserNotificationCenter.current().add(request)
+            rememberSentNotification(identifier: identifier)
+            return true
         } catch {
             print("Could not schedule route alert notification: \(error.localizedDescription)")
+            return false
         }
     }
 
@@ -60,17 +70,49 @@ enum RouteAlertNotificationManager {
         severity: AlertSeverity,
         alerts: [TTCAlert]
     ) -> String {
-        let alertText = alerts.map(\.text).joined(separator: "|")
-        let routeID = route.routeID ?? route.id.uuidString
+        let alertText = alerts
+            .map { TTCAlertsService.normalizedAlertText($0.text) }
+            .sorted()
+            .joined(separator: "|")
+        let routeID = route.routeID ?? route.routeNumber ?? route.name
         let routeNumber = route.routeNumber ?? route.name
 
         return [
             routeID,
             routeNumber,
             severity.rawValue,
-            String(alertText.hashValue)
+            stableHash(for: alertText)
         ]
         .joined(separator: "-")
+    }
+
+    static func hasRecentlySentNotification(identifier: String) -> Bool {
+        savedNotificationKeys().contains(identifier)
+    }
+
+    private static func rememberSentNotification(identifier: String) {
+        var keys = savedNotificationKeys()
+        keys.append(identifier)
+
+        if keys.count > 100 {
+            keys = Array(keys.suffix(100))
+        }
+
+        UserDefaults.standard.set(keys, forKey: sentNotificationKeysKey)
+    }
+
+    private static func savedNotificationKeys() -> [String] {
+        UserDefaults.standard.stringArray(forKey: sentNotificationKeysKey) ?? []
+    }
+
+    private static func stableHash(for text: String) -> String {
+        var hash: UInt64 = 5381
+
+        for byte in text.utf8 {
+            hash = ((hash << 5) &+ hash) &+ UInt64(byte)
+        }
+
+        return String(hash, radix: 16)
     }
 
     static func routeTitle(for route: TTCAlertRoute) -> String {

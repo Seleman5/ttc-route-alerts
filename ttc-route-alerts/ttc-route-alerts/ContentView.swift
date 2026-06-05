@@ -21,6 +21,10 @@ struct ContentView: View {
     @State private var refreshErrorMessage: String?
     @State private var routeFormErrorMessage: String?
     @State private var editingRouteID: UUID?
+    @State private var routeSuggestions = RouteSuggestion.suggestedRoutes
+    @State private var filteredSuggestedRoutesCache: [SuggestedRoute] = []
+    @State private var routeAlertMatches: [UUID: [TTCAlert]] = [:]
+    @State private var routeSeverities: [UUID: AlertSeverity] = [:]
     @State private var sentNotificationKeys: Set<String> = []
     @State private var autoRefreshTask: Task<Void, Never>?
     @ScaledMetric private var routeRowHeight = 108
@@ -85,6 +89,8 @@ struct ContentView: View {
             await refreshAlerts(shouldSendNotifications: false)
         }
         .onAppear {
+            updateFilteredSuggestedRoutes()
+            rebuildRouteAlertCache()
             startAutoRefreshIfNeeded()
         }
         .onDisappear {
@@ -93,6 +99,12 @@ struct ContentView: View {
         .onChange(of: refreshPreference) { _, _ in
             startAutoRefreshIfNeeded()
             BackgroundAlertRefreshManager.scheduleBackgroundRefresh()
+        }
+        .onChange(of: routeNumberInput) { _, _ in
+            updateFilteredSuggestedRoutes()
+        }
+        .onChange(of: selectedRouteType) { _, _ in
+            updateFilteredSuggestedRoutes()
         }
         .onChange(of: scenePhase) { _, newScenePhase in
             if newScenePhase == .active {
@@ -336,15 +348,20 @@ struct ContentView: View {
     }
 
     var filteredSuggestedRoutes: [SuggestedRoute] {
+        filteredSuggestedRoutesCache
+    }
+
+    func updateFilteredSuggestedRoutes() {
         let searchText = routeNumberInput.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
 
         if searchText.isEmpty {
-            return RouteSuggestion.suggestedRoutes.filter { suggestion in
+            filteredSuggestedRoutesCache = routeSuggestions.filter { suggestion in
                 suggestion.routeType == selectedRouteType
             }
+            return
         }
 
-        return RouteSuggestion.suggestedRoutes.filter { suggestion in
+        filteredSuggestedRoutesCache = routeSuggestions.filter { suggestion in
             suggestion.matches(searchText)
         }
     }
@@ -354,6 +371,7 @@ struct ContentView: View {
         routeNumberInput = suggestion.routeNumber
         routeNicknameInput = suggestion.nickname
         routeFormErrorMessage = nil
+        updateFilteredSuggestedRoutes()
     }
 
     func saveRouteForm() {
@@ -392,6 +410,7 @@ struct ContentView: View {
 
         savedRoutes.append(newRoute)
         saveRoutes()
+        rebuildRouteAlertCache()
         routeFormErrorMessage = nil
         clearRouteForm()
     }
@@ -423,6 +442,7 @@ struct ContentView: View {
 
         savedRoutes[routeIndex] = editedRoute
         saveRoutes()
+        rebuildRouteAlertCache()
         routeFormErrorMessage = nil
         clearRouteForm()
     }
@@ -433,6 +453,7 @@ struct ContentView: View {
         routeNumberInput = ""
         routeNicknameInput = ""
         routeFormErrorMessage = nil
+        updateFilteredSuggestedRoutes()
     }
 
     func validationMessage(for routeType: RouteType) -> String {
@@ -451,6 +472,7 @@ struct ContentView: View {
         let deletedRouteIDs = offsets.map { savedRoutes[$0].id }
         savedRoutes.remove(atOffsets: offsets)
         saveRoutes()
+        rebuildRouteAlertCache()
 
         if let editingRouteID, deletedRouteIDs.contains(editingRouteID) {
             clearRouteForm()
@@ -462,6 +484,7 @@ struct ContentView: View {
             savedRoute.id == route.id
         }
         saveRoutes()
+        rebuildRouteAlertCache()
 
         if editingRouteID == route.id {
             clearRouteForm()
@@ -479,6 +502,7 @@ struct ContentView: View {
         do {
             ttcAlerts = try await TTCAlertsService().fetchAlertsFeed()
             lastUpdatedDate = Date()
+            rebuildRouteAlertCache()
             saveCachedAlerts()
             saveLastUpdatedDate()
 
@@ -541,29 +565,52 @@ struct ContentView: View {
                 alerts: alerts
             )
 
-            guard !sentNotificationKeys.contains(notificationKey) else {
+            guard !sentNotificationKeys.contains(notificationKey),
+                  !RouteAlertNotificationManager.hasRecentlySentNotification(identifier: notificationKey) else {
                 continue
             }
 
-            sentNotificationKeys.insert(notificationKey)
-
-            await RouteAlertNotificationManager.scheduleRouteAlertNotification(
+            let didScheduleNotification = await RouteAlertNotificationManager.scheduleRouteAlertNotification(
                 for: route,
                 severity: severity,
                 identifier: notificationKey
             )
+
+            if didScheduleNotification {
+                sentNotificationKeys.insert(notificationKey)
+            }
         }
     }
 
     func matchingAlerts(for route: TTCAlertRoute) -> [TTCAlert] {
-        return ttcAlerts.filter { alert in
-            RouteMatcher.matches(alert, route: route)
-        }
+        RouteAlertStatus.matchingAlerts(
+            for: route,
+            cachedAlerts: routeAlertMatches[route.id],
+            allAlerts: ttcAlerts
+        )
     }
 
     func routeSeverity(for route: TTCAlertRoute) -> AlertSeverity {
-        let alertTexts = matchingAlerts(for: route).map(\.text)
-        return AlertSeverity.strongestSeverity(in: alertTexts)
+        let alerts = matchingAlerts(for: route)
+        return AlertSeverity.strongestSeverity(in: alerts.map(\.text))
+    }
+
+    func rebuildRouteAlertCache() {
+        var newRouteAlertMatches: [UUID: [TTCAlert]] = [:]
+        var newRouteSeverities: [UUID: AlertSeverity] = [:]
+
+        for route in savedRoutes {
+            let alerts = matchingAlertsWithoutCache(for: route)
+            newRouteAlertMatches[route.id] = alerts
+            newRouteSeverities[route.id] = AlertSeverity.strongestSeverity(in: alerts.map(\.text))
+        }
+
+        routeAlertMatches = newRouteAlertMatches
+        routeSeverities = newRouteSeverities
+    }
+
+    func matchingAlertsWithoutCache(for route: TTCAlertRoute) -> [TTCAlert] {
+        RouteAlertStatus.matchingAlerts(for: route, in: ttcAlerts)
     }
 
     static func loadRoutes() -> [TTCAlertRoute] {

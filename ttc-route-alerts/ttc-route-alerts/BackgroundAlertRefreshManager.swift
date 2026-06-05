@@ -81,9 +81,7 @@ enum BackgroundAlertRefreshManager {
         let savedRoutes = ContentView.loadRoutes()
 
         for route in savedRoutes {
-            let matchingAlerts = alerts.filter { alert in
-                RouteMatcher.matches(alert, route: route)
-            }
+            let matchingAlerts = RouteAlertStatus.matchingAlerts(for: route, in: alerts)
             let severity = AlertSeverity.strongestSeverity(in: matchingAlerts.map(\.text))
 
             guard severity != .normal else {
@@ -95,6 +93,10 @@ enum BackgroundAlertRefreshManager {
                 severity: severity,
                 alerts: matchingAlerts
             )
+
+            guard !RouteAlertNotificationManager.hasRecentlySentNotification(identifier: notificationKey) else {
+                continue
+            }
 
             await RouteAlertNotificationManager.scheduleRouteAlertNotification(
                 for: route,

@@ -45,7 +45,11 @@ struct SuggestedRoute: Identifiable {
 }
 
 enum RouteSuggestion {
-    static let suggestedRoutes = loadBundledRoutes() ?? fallbackSuggestedRoutes
+    // Parsed GTFS routes are cached here the first time the app asks for them.
+    // This keeps routes.txt from being reparsed during button taps or view refreshes.
+    static let suggestedRoutes: [SuggestedRoute] = {
+        loadBundledRoutes() ?? fallbackSuggestedRoutes
+    }()
 
     static func isSuggestionNickname(_ nickname: String) -> Bool {
         suggestedRoutes.contains { suggestion in
