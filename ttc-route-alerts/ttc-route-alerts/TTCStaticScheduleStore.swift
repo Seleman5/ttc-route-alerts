@@ -70,6 +70,13 @@ struct TTCTripRouteData {
     let routesByID: [String: SuggestedRoute]
 }
 
+private struct StopTimeHeaderIndexes {
+    let tripIDIndex: Int
+    let arrivalTimeIndex: Int
+    let stopIDIndex: Int
+    let stopSequenceIndex: Int?
+}
+
 enum TTCStaticScheduleStore {
     static func upcomingArrivals(
         for stopID: String,
@@ -77,7 +84,7 @@ enum TTCStaticScheduleStore {
         calendar: Calendar = .current,
         limit: Int = 10
     ) -> Result<[StopArrival], TTCStaticScheduleError> {
-        bundledScheduleResult.map { schedule in
+        bundledSchedule(for: stopID).map { schedule in
             upcomingArrivals(
                 for: stopID,
                 in: schedule,
@@ -111,37 +118,64 @@ enum TTCStaticScheduleStore {
     }
 
     static func parseStopTimes(from stopTimesText: String) -> [GTFSStopTime] {
-        let lines = nonEmptyLines(in: stopTimesText)
+        parseStopTimes(from: stopTimesText, matchingStopIDs: nil)
+    }
 
-        guard let headerLine = lines.first else {
-            return []
-        }
+    static func parseStopTimes(
+        from stopTimesText: String,
+        matchingStopIDs: Set<String>?
+    ) -> [GTFSStopTime] {
+        var stopTimes: [GTFSStopTime] = []
+        var headerIndexes: StopTimeHeaderIndexes?
 
-        let headers = csvFields(in: headerLine).map { field in
-            field.trimmingCharacters(in: .whitespacesAndNewlines)
-        }
+        stopTimesText.enumerateLines { line, _ in
+            let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        guard let tripIDIndex = headers.firstIndex(of: "trip_id"),
-              let arrivalTimeIndex = headers.firstIndex(of: "arrival_time"),
-              let stopIDIndex = headers.firstIndex(of: "stop_id") else {
-            return []
-        }
-
-        let stopSequenceIndex = headers.firstIndex(of: "stop_sequence")
-
-        return lines.dropFirst().compactMap { line in
-            let fields = csvFields(in: line)
-
-            guard fields.indices.contains(tripIDIndex),
-                  fields.indices.contains(arrivalTimeIndex),
-                  fields.indices.contains(stopIDIndex) else {
-                return nil
+            guard !trimmedLine.isEmpty else {
+                return
             }
 
-            let tripID = fields[tripIDIndex].trimmingCharacters(in: .whitespacesAndNewlines)
-            let arrivalTime = fields[arrivalTimeIndex].trimmingCharacters(in: .whitespacesAndNewlines)
-            let stopID = fields[stopIDIndex].trimmingCharacters(in: .whitespacesAndNewlines)
-            let stopSequence = stopSequenceIndex.flatMap { index -> Int? in
+            if headerIndexes == nil {
+                let headers = csvFields(in: trimmedLine).map { field in
+                    field.trimmingCharacters(in: .whitespacesAndNewlines)
+                }
+
+                guard let tripIDIndex = headers.firstIndex(of: "trip_id"),
+                      let arrivalTimeIndex = headers.firstIndex(of: "arrival_time"),
+                      let stopIDIndex = headers.firstIndex(of: "stop_id") else {
+                    return
+                }
+
+                headerIndexes = StopTimeHeaderIndexes(
+                    tripIDIndex: tripIDIndex,
+                    arrivalTimeIndex: arrivalTimeIndex,
+                    stopIDIndex: stopIDIndex,
+                    stopSequenceIndex: headers.firstIndex(of: "stop_sequence")
+                )
+                return
+            }
+
+            guard let headerIndexes else {
+                return
+            }
+
+            let fields = csvFields(in: trimmedLine)
+
+            guard fields.indices.contains(headerIndexes.tripIDIndex),
+                  fields.indices.contains(headerIndexes.arrivalTimeIndex),
+                  fields.indices.contains(headerIndexes.stopIDIndex) else {
+                return
+            }
+
+            let tripID = fields[headerIndexes.tripIDIndex].trimmingCharacters(in: .whitespacesAndNewlines)
+            let arrivalTime = fields[headerIndexes.arrivalTimeIndex].trimmingCharacters(in: .whitespacesAndNewlines)
+            let stopID = fields[headerIndexes.stopIDIndex].trimmingCharacters(in: .whitespacesAndNewlines)
+
+            if let matchingStopIDs, !matchingStopIDs.contains(stopID) {
+                return
+            }
+
+            let stopSequence = headerIndexes.stopSequenceIndex.flatMap { index -> Int? in
                 guard fields.indices.contains(index) else {
                     return nil
                 }
@@ -154,17 +188,21 @@ enum TTCStaticScheduleStore {
                   !arrivalTime.isEmpty,
                   !stopID.isEmpty,
                   let arrivalSeconds = secondsSinceMidnight(in: arrivalTime) else {
-                return nil
+                return
             }
 
-            return GTFSStopTime(
-                tripID: tripID,
-                arrivalTime: arrivalTime,
-                stopID: stopID,
-                stopSequence: stopSequence,
-                arrivalSeconds: arrivalSeconds
+            stopTimes.append(
+                GTFSStopTime(
+                    tripID: tripID,
+                    arrivalTime: arrivalTime,
+                    stopID: stopID,
+                    stopSequence: stopSequence,
+                    arrivalSeconds: arrivalSeconds
+                )
             )
         }
+
+        return stopTimes
     }
 
     static func parseTrips(from tripsText: String) -> [GTFSTrip] {
@@ -238,47 +276,66 @@ enum TTCStaticScheduleStore {
     }
 
     static func bundledTripRouteData() -> TTCTripRouteData {
-        let trips = loadBundledTrips()
-        let routes = RouteSuggestion.suggestedRoutes
-
-        return tripRouteData(trips: trips, routes: routes)
+        bundledTripRouteDataCache
     }
 
     static func stopTimeSequenceKeys(for stopID: String) -> Result<Set<String>, TTCStaticScheduleError> {
-        bundledScheduleResult.map { schedule in
+        bundledSchedule(for: stopID).map { schedule in
             let stopTimes = schedule.stopTimesByStopID[stopID] ?? []
             return Set(stopTimes.compactMap(sequenceKey(for:)))
         }
     }
 
-    private static let bundledScheduleResult: Result<TTCStaticScheduleData, TTCStaticScheduleError> = {
-        do {
-            return .success(try loadBundledSchedule())
-        } catch let error as TTCStaticScheduleError {
-            return .failure(error)
-        } catch {
-            return .failure(.missingFile("GTFS schedule files"))
-        }
+    private static let bundledTripRouteDataCache: TTCTripRouteData = {
+        let trips = loadBundledTrips()
+        let routes = RouteSuggestion.suggestedRoutes
+
+        return tripRouteData(trips: trips, routes: routes)
     }()
 
-    private static func loadBundledSchedule() throws -> TTCStaticScheduleData {
+    private static var bundledScheduleCache: [String: Result<TTCStaticScheduleData, TTCStaticScheduleError>] = [:]
+    private static let bundledScheduleCacheQueue = DispatchQueue(label: "TTCStaticScheduleStore.bundledScheduleCache")
+
+    private static func bundledSchedule(for stopID: String) -> Result<TTCStaticScheduleData, TTCStaticScheduleError> {
+        if let cachedResult = bundledScheduleCacheQueue.sync(execute: { bundledScheduleCache[stopID] }) {
+            return cachedResult
+        }
+
+        let result: Result<TTCStaticScheduleData, TTCStaticScheduleError>
+
+        do {
+            result = .success(try loadBundledSchedule(for: stopID))
+        } catch let error as TTCStaticScheduleError {
+            result = .failure(error)
+        } catch {
+            result = .failure(.missingFile("GTFS schedule files"))
+        }
+
+        bundledScheduleCacheQueue.sync {
+            bundledScheduleCache[stopID] = result
+        }
+
+        return result
+    }
+
+    private static func loadBundledSchedule(for stopID: String) throws -> TTCStaticScheduleData {
         guard let stopTimesFileURL = Bundle.main.url(forResource: "stop_times", withExtension: "txt") else {
             throw TTCStaticScheduleError.missingFile("stop_times.txt")
         }
 
-        guard let tripsFileURL = Bundle.main.url(forResource: "trips", withExtension: "txt") else {
-            throw TTCStaticScheduleError.missingFile("trips.txt")
-        }
-
         let stopTimesText = try String(contentsOf: stopTimesFileURL, encoding: .utf8)
-        let tripsText = try String(contentsOf: tripsFileURL, encoding: .utf8)
-        let stopTimes = parseStopTimes(from: stopTimesText)
-        let trips = parseTrips(from: tripsText)
+        let stopTimes = parseStopTimes(
+            from: stopTimesText,
+            matchingStopIDs: [stopID]
+        )
+        let tripRouteData = bundledTripRouteData()
 
-        return scheduleData(
-            stopTimes: stopTimes,
-            trips: trips,
-            routes: RouteSuggestion.suggestedRoutes
+        return TTCStaticScheduleData(
+            stopTimesByStopID: Dictionary(grouping: stopTimes) { stopTime in
+                stopTime.stopID
+            },
+            tripsByID: tripRouteData.tripsByID,
+            routesByID: tripRouteData.routesByID
         )
     }
 

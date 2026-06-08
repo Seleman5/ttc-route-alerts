@@ -26,6 +26,23 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
         XCTAssertEqual(stopTimes[1].arrivalSeconds, 90_300)
     }
 
+    func testParseStopTimesCanLimitRowsToOneStop() {
+        let stopTimesText = """
+        trip_id,arrival_time,departure_time,stop_id,stop_sequence
+        trip-a,08:15:00,08:15:30,stop-1,1
+        trip-b,08:20:00,08:20:30,stop-2,2
+        trip-c,08:25:00,08:25:30,stop-1,3
+        """
+
+        let stopTimes = TTCStaticScheduleStore.parseStopTimes(
+            from: stopTimesText,
+            matchingStopIDs: ["stop-1"]
+        )
+
+        XCTAssertEqual(stopTimes.map(\.tripID), ["trip-a", "trip-c"])
+        XCTAssertEqual(stopTimes.map(\.stopSequence), [1, 3])
+    }
+
     func testParseTripsReadsHeadsignWhenAvailable() {
         let tripsText = """
         route_id,service_id,trip_id,trip_headsign
@@ -165,6 +182,10 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
         XCTAssertEqual(result.dataSource, .live)
         XCTAssertEqual(result.dataSourceMessage, StopDetailArrivalLoader.liveMessage)
         XCTAssertEqual(result.scheduleError, nil)
+        XCTAssertEqual(result.diagnostics.liveFeedFetchedSuccessfully, true)
+        XCTAssertEqual(result.diagnostics.liveUpdateCount, 1)
+        XCTAssertEqual(result.diagnostics.matchingLiveUpdateCount, 1)
+        XCTAssertEqual(result.diagnostics.fallbackUsed, false)
         XCTAssertEqual(scheduledFetchCount, 0)
     }
 
@@ -194,7 +215,51 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
         XCTAssertEqual(result.dataSource, .scheduled)
         XCTAssertEqual(result.dataSourceMessage, StopDetailArrivalLoader.scheduledFallbackMessage)
         XCTAssertEqual(result.scheduleError, nil)
+        XCTAssertEqual(result.diagnostics.liveFeedFetchedSuccessfully, true)
+        XCTAssertEqual(result.diagnostics.liveUpdateCount, 0)
+        XCTAssertEqual(result.diagnostics.matchingLiveUpdateCount, 0)
+        XCTAssertEqual(result.diagnostics.fallbackUsed, true)
         XCTAssertEqual(scheduledFetchCount, 1)
+    }
+
+    func testStopDetailArrivalLoaderSkipsSequenceFallbackByDefault() async {
+        let scheduledArrival = stopArrival(id: "scheduled", source: .scheduled)
+        var sequenceFetchCount = 0
+        let loader = StopDetailArrivalLoader(
+            fetchLiveUpdates: {
+                [
+                    TTCLiveStopTimeUpdate(
+                        tripID: "live-trip",
+                        routeID: "route-501",
+                        stopID: "different-stop",
+                        stopSequence: 4,
+                        arrivalDate: Date(timeIntervalSince1970: 1_800_000_300)
+                    )
+                ]
+            },
+            fetchStopTimeSequenceKeys: { _ in
+                sequenceFetchCount += 1
+                return .success([
+                    TTCStaticScheduleStore.sequenceKey(tripID: "live-trip", stopSequence: 4)
+                ])
+            },
+            fetchScheduledArrivals: { _ in
+                .success([scheduledArrival])
+            }
+        )
+
+        let result = await loader.loadArrivals(
+            for: "stop-1",
+            matchingStopIDs: ["stop-1"],
+            tripRouteData: tripRouteData(),
+            now: Date(timeIntervalSince1970: 1_800_000_000)
+        )
+
+        XCTAssertEqual(result.arrivals, [scheduledArrival])
+        XCTAssertEqual(result.dataSource, .scheduled)
+        XCTAssertEqual(result.diagnostics.matchingLiveUpdateCount, 0)
+        XCTAssertEqual(result.diagnostics.fallbackUsed, true)
+        XCTAssertEqual(sequenceFetchCount, 0)
     }
 
     func testStopDetailArrivalLoaderUsesLiveSequenceMatchBeforeScheduledFallback() async {
@@ -212,6 +277,7 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
             fetchLiveUpdates: {
                 [liveUpdate]
             },
+            usesSequenceFallback: true,
             fetchStopTimeSequenceKeys: { _ in
                 .success([
                     TTCStaticScheduleStore.sequenceKey(tripID: "live-trip", stopSequence: 4)
@@ -233,6 +299,8 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
         XCTAssertEqual(result.arrivals.count, 1)
         XCTAssertEqual(result.arrivals[0].source, .live)
         XCTAssertEqual(result.dataSource, .live)
+        XCTAssertEqual(result.diagnostics.matchingLiveUpdateCount, 1)
+        XCTAssertEqual(result.diagnostics.fallbackUsed, false)
         XCTAssertEqual(scheduledFetchCount, 0)
     }
 
