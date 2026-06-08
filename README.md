@@ -8,6 +8,30 @@ TTC provides general service alerts, but commuters usually only care about route
 2. Open the project in Xcode
 3. Build and run on an iPhone simulator or device
 
+## Local GTFS Schedule Setup
+
+The app can show scheduled arrivals for nearby stops using TTC GTFS static data. The repository keeps the smaller bundled GTFS files, such as `routes.txt` and `stops.txt`, but does not track `stop_times.txt` because the full file is too large for normal GitHub commits.
+
+To test scheduled arrivals locally:
+
+1. Download the latest TTC GTFS static zip from the TTC open data site.
+2. Extract `stop_times.txt` from the zip.
+3. Add `stop_times.txt` locally at:
+
+   `ttc-route-alerts/ttc-route-alerts/stop_times.txt`
+
+4. In Xcode, make sure `stop_times.txt` is included in the `ttc-route-alerts` app target so it is copied into the app bundle.
+
+The schedule detail screen also uses `trips.txt` and the existing bundled `routes.txt`. If `trips.txt` is not already present in your local project, extract it from the same TTC GTFS zip and add it to the same app target.
+
+If `stop_times.txt` was already added to Git tracking, remove it from the Git index while keeping the local file:
+
+```bash
+git rm --cached ttc-route-alerts/ttc-route-alerts/stop_times.txt
+```
+
+Future optimization: generate a smaller bundled schedule subset, or build a local database from GTFS files, instead of committing the full `stop_times.txt`.
+
 ## App Icon Setup
 
 The project includes a temporary TTC-inspired app icon in:

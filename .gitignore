@@ -60,3 +60,6 @@ fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
+
+# Large local GTFS files
+ttc-route-alerts/ttc-route-alerts/stop_times.txt
