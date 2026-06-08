@@ -20,7 +20,9 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
         XCTAssertEqual(stopTimes[0].tripID, "trip-a")
         XCTAssertEqual(stopTimes[0].arrivalTime, "08:15:00")
         XCTAssertEqual(stopTimes[0].stopID, "stop-1")
+        XCTAssertEqual(stopTimes[0].stopSequence, 1)
         XCTAssertEqual(stopTimes[0].arrivalSeconds, 29_700)
+        XCTAssertEqual(stopTimes[1].stopSequence, 2)
         XCTAssertEqual(stopTimes[1].arrivalSeconds, 90_300)
     }
 
@@ -153,6 +155,7 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
 
         let result = await loader.loadArrivals(
             for: "stop-1",
+            matchingStopIDs: ["stop-1"],
             tripRouteData: tripRouteData(),
             now: now
         )
@@ -172,6 +175,9 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
             fetchLiveUpdates: {
                 []
             },
+            fetchStopTimeSequenceKeys: { _ in
+                .success([])
+            },
             fetchScheduledArrivals: { _ in
                 scheduledFetchCount += 1
                 return .success([scheduledArrival])
@@ -180,6 +186,7 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
 
         let result = await loader.loadArrivals(
             for: "stop-1",
+            matchingStopIDs: ["stop-1"],
             tripRouteData: tripRouteData()
         )
 
@@ -188,6 +195,45 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
         XCTAssertEqual(result.dataSourceMessage, StopDetailArrivalLoader.scheduledFallbackMessage)
         XCTAssertEqual(result.scheduleError, nil)
         XCTAssertEqual(scheduledFetchCount, 1)
+    }
+
+    func testStopDetailArrivalLoaderUsesLiveSequenceMatchBeforeScheduledFallback() async {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let liveUpdate = TTCLiveStopTimeUpdate(
+            tripID: "live-trip",
+            routeID: "route-501",
+            stopID: "different-stop",
+            stopSequence: 4,
+            arrivalDate: Date(timeIntervalSince1970: 1_800_000_300)
+        )
+        let scheduledArrival = stopArrival(id: "scheduled", source: .scheduled)
+        var scheduledFetchCount = 0
+        let loader = StopDetailArrivalLoader(
+            fetchLiveUpdates: {
+                [liveUpdate]
+            },
+            fetchStopTimeSequenceKeys: { _ in
+                .success([
+                    TTCStaticScheduleStore.sequenceKey(tripID: "live-trip", stopSequence: 4)
+                ])
+            },
+            fetchScheduledArrivals: { _ in
+                scheduledFetchCount += 1
+                return .success([scheduledArrival])
+            }
+        )
+
+        let result = await loader.loadArrivals(
+            for: "stop-1",
+            matchingStopIDs: ["stop-1"],
+            tripRouteData: tripRouteData(),
+            now: now
+        )
+
+        XCTAssertEqual(result.arrivals.count, 1)
+        XCTAssertEqual(result.arrivals[0].source, .live)
+        XCTAssertEqual(result.dataSource, .live)
+        XCTAssertEqual(scheduledFetchCount, 0)
     }
 
     func testStopDetailArrivalLoaderFetchesLiveAgainOnEachLoad() async {
@@ -212,11 +258,13 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
 
         let firstResult = await loader.loadArrivals(
             for: "stop-1",
+            matchingStopIDs: ["stop-1"],
             tripRouteData: tripRouteData(),
             now: now
         )
         let secondResult = await loader.loadArrivals(
             for: "stop-1",
+            matchingStopIDs: ["stop-1"],
             tripRouteData: tripRouteData(),
             now: now
         )

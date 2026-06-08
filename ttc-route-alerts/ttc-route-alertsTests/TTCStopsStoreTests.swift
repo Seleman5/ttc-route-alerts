@@ -19,10 +19,25 @@ final class TTCStopsStoreTests: XCTestCase {
 
         XCTAssertEqual(stops.count, 2)
         XCTAssertEqual(stops[0].stopID, "1001")
+        XCTAssertEqual(stops[0].stopCode, nil)
         XCTAssertEqual(stops[0].stopName, "Main Street Station")
         XCTAssertEqual(stops[0].latitude, 43.689000)
         XCTAssertEqual(stops[0].longitude, -79.301000)
         XCTAssertEqual(stops[1].stopName, "Queen, Eastbound")
+    }
+
+    func testParseGTFSStopsReadsStopCodeWhenAvailable() {
+        let stopsText = """
+        stop_id,stop_code,stop_name,stop_desc,stop_lat,stop_lon
+        platform-1001,1001,Main Street Station,,43.689000,-79.301000
+        """
+
+        let stops = TTCStopsStore.parseGTFSStops(from: stopsText)
+
+        XCTAssertEqual(stops.count, 1)
+        XCTAssertEqual(stops[0].stopID, "platform-1001")
+        XCTAssertEqual(stops[0].stopCode, "1001")
+        XCTAssertEqual(stops[0].matchingStopIDs, ["platform-1001", "1001"])
     }
 
     func testParseGTFSStopsSkipsInvalidRowsAndDuplicateStopIDs() {

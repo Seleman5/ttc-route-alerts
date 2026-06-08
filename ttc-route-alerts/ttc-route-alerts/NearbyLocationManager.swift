@@ -47,11 +47,6 @@ final class NearbyLocationManager: NSObject, ObservableObject {
     }
 
     func requestCurrentLocation() {
-        guard CLLocationManager.locationServicesEnabled() else {
-            locationErrorMessage = "Location services are turned off on this device."
-            return
-        }
-
         guard isAuthorized else {
             requestPermissionOrLocation()
             return
@@ -70,6 +65,9 @@ extension NearbyLocationManager: CLLocationManagerDelegate {
 
             if self.isAuthorized {
                 self.requestCurrentLocation()
+            } else if self.isDenied {
+                self.isRequestingLocation = false
+                self.locationErrorMessage = "Location access is turned off for this app."
             }
         }
     }

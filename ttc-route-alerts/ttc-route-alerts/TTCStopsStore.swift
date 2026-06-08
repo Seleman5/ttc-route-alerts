@@ -63,6 +63,7 @@ enum TTCStopsStore {
             return []
         }
 
+        let stopCodeIndex = headers.firstIndex(of: "stop_code")
         var stops: [TTCStop] = []
         var seenStopIDs: Set<String> = []
 
@@ -77,6 +78,14 @@ enum TTCStopsStore {
             }
 
             let stopID = fields[stopIDIndex].trimmingCharacters(in: .whitespacesAndNewlines)
+            let stopCode = stopCodeIndex.flatMap { index -> String? in
+                guard fields.indices.contains(index) else {
+                    return nil
+                }
+
+                let code = fields[index].trimmingCharacters(in: .whitespacesAndNewlines)
+                return code.isEmpty ? nil : code
+            }
             let stopName = fields[stopNameIndex].trimmingCharacters(in: .whitespacesAndNewlines)
             let stopLatitudeText = fields[stopLatitudeIndex].trimmingCharacters(in: .whitespacesAndNewlines)
             let stopLongitudeText = fields[stopLongitudeIndex].trimmingCharacters(in: .whitespacesAndNewlines)
@@ -92,6 +101,7 @@ enum TTCStopsStore {
             stops.append(
                 TTCStop(
                     stopID: stopID,
+                    stopCode: stopCode,
                     stopName: stopName,
                     latitude: stopLatitude,
                     longitude: stopLongitude

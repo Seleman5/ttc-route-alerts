@@ -9,7 +9,22 @@ struct GTFSStopTime: Equatable {
     let tripID: String
     let arrivalTime: String
     let stopID: String
+    let stopSequence: Int?
     let arrivalSeconds: Int
+
+    init(
+        tripID: String,
+        arrivalTime: String,
+        stopID: String,
+        stopSequence: Int? = nil,
+        arrivalSeconds: Int
+    ) {
+        self.tripID = tripID
+        self.arrivalTime = arrivalTime
+        self.stopID = stopID
+        self.stopSequence = stopSequence
+        self.arrivalSeconds = arrivalSeconds
+    }
 }
 
 struct GTFSTrip: Equatable {
@@ -112,6 +127,8 @@ enum TTCStaticScheduleStore {
             return []
         }
 
+        let stopSequenceIndex = headers.firstIndex(of: "stop_sequence")
+
         return lines.dropFirst().compactMap { line in
             let fields = csvFields(in: line)
 
@@ -124,6 +141,14 @@ enum TTCStaticScheduleStore {
             let tripID = fields[tripIDIndex].trimmingCharacters(in: .whitespacesAndNewlines)
             let arrivalTime = fields[arrivalTimeIndex].trimmingCharacters(in: .whitespacesAndNewlines)
             let stopID = fields[stopIDIndex].trimmingCharacters(in: .whitespacesAndNewlines)
+            let stopSequence = stopSequenceIndex.flatMap { index -> Int? in
+                guard fields.indices.contains(index) else {
+                    return nil
+                }
+
+                let sequenceText = fields[index].trimmingCharacters(in: .whitespacesAndNewlines)
+                return Int(sequenceText)
+            }
 
             guard !tripID.isEmpty,
                   !arrivalTime.isEmpty,
@@ -136,6 +161,7 @@ enum TTCStaticScheduleStore {
                 tripID: tripID,
                 arrivalTime: arrivalTime,
                 stopID: stopID,
+                stopSequence: stopSequence,
                 arrivalSeconds: arrivalSeconds
             )
         }
@@ -216,6 +242,13 @@ enum TTCStaticScheduleStore {
         let routes = RouteSuggestion.suggestedRoutes
 
         return tripRouteData(trips: trips, routes: routes)
+    }
+
+    static func stopTimeSequenceKeys(for stopID: String) -> Result<Set<String>, TTCStaticScheduleError> {
+        bundledScheduleResult.map { schedule in
+            let stopTimes = schedule.stopTimesByStopID[stopID] ?? []
+            return Set(stopTimes.compactMap(sequenceKey(for:)))
+        }
     }
 
     private static let bundledScheduleResult: Result<TTCStaticScheduleData, TTCStaticScheduleError> = {
@@ -324,6 +357,18 @@ enum TTCStaticScheduleStore {
             arrivalDate: nil,
             source: .scheduled
         )
+    }
+
+    static func sequenceKey(for stopTime: GTFSStopTime) -> String? {
+        guard let stopSequence = stopTime.stopSequence else {
+            return nil
+        }
+
+        return sequenceKey(tripID: stopTime.tripID, stopSequence: stopSequence)
+    }
+
+    static func sequenceKey(tripID: String, stopSequence: Int) -> String {
+        "\(tripID)|\(stopSequence)"
     }
 
     private static func nonEmptyLines(in text: String) -> [String] {

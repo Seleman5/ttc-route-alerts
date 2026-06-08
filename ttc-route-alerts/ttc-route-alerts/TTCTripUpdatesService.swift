@@ -10,7 +10,22 @@ struct TTCLiveStopTimeUpdate: Equatable {
     let tripID: String
     let routeID: String?
     let stopID: String
+    let stopSequence: Int?
     let arrivalDate: Date
+
+    init(
+        tripID: String,
+        routeID: String?,
+        stopID: String,
+        stopSequence: Int? = nil,
+        arrivalDate: Date
+    ) {
+        self.tripID = tripID
+        self.routeID = routeID
+        self.stopID = stopID
+        self.stopSequence = stopSequence
+        self.arrivalDate = arrivalDate
+    }
 }
 
 struct TTCTripUpdatesService {
@@ -94,12 +109,19 @@ struct TTCTripUpdatesService {
     static func stopArrivals(
         from liveUpdates: [TTCLiveStopTimeUpdate],
         stopID: String,
+        alternateStopIDs: [String] = [],
+        stopTimeSequenceKeys: Set<String> = [],
         tripsByID: [String: GTFSTrip],
         routesByID: [String: SuggestedRoute],
         now: Date = Date(),
         limit: Int = 10
     ) -> [StopArrival] {
-        matchingLiveUpdates(from: liveUpdates, stopID: stopID)
+        matchingLiveUpdates(
+            from: liveUpdates,
+            stopID: stopID,
+            alternateStopIDs: alternateStopIDs,
+            stopTimeSequenceKeys: stopTimeSequenceKeys
+        )
             .filter { update in
                 update.arrivalDate >= now
             }
@@ -127,10 +149,16 @@ struct TTCTripUpdatesService {
 
     static func matchingLiveUpdates(
         from liveUpdates: [TTCLiveStopTimeUpdate],
-        stopID: String
+        stopID: String,
+        alternateStopIDs: [String] = [],
+        stopTimeSequenceKeys: Set<String> = []
     ) -> [TTCLiveStopTimeUpdate] {
-        liveUpdates.filter { update in
-            stopIDsMatch(update.stopID, stopID)
+        let stopIDsToMatch = [stopID] + alternateStopIDs
+
+        return liveUpdates.filter { update in
+            stopIDsToMatch.contains { candidateStopID in
+                stopIDsMatch(update.stopID, candidateStopID)
+            } || sequenceKeyMatches(update, stopTimeSequenceKeys: stopTimeSequenceKeys)
         }
     }
 
@@ -140,8 +168,9 @@ struct TTCTripUpdatesService {
         routeID: String?
     ) -> TTCLiveStopTimeUpdate? {
         let stopID = stopTimeUpdate.stopID.trimmingCharacters(in: .whitespacesAndNewlines)
+        let stopSequence = stopTimeUpdate.hasStopSequence ? Int(stopTimeUpdate.stopSequence) : nil
 
-        guard !stopID.isEmpty,
+        guard (!stopID.isEmpty || stopSequence != nil),
               let eventTime = eventTime(from: stopTimeUpdate) else {
             return nil
         }
@@ -150,6 +179,7 @@ struct TTCTripUpdatesService {
             tripID: tripID,
             routeID: routeID,
             stopID: stopID,
+            stopSequence: stopSequence,
             arrivalDate: Date(timeIntervalSince1970: TimeInterval(eventTime))
         )
     }
@@ -211,6 +241,23 @@ struct TTCTripUpdatesService {
 
         return (first == firstLeadingNumber && secondLeadingNumber == first)
             || (second == secondLeadingNumber && firstLeadingNumber == second)
+    }
+
+    private static func sequenceKeyMatches(
+        _ liveUpdate: TTCLiveStopTimeUpdate,
+        stopTimeSequenceKeys: Set<String>
+    ) -> Bool {
+        guard let stopSequence = liveUpdate.stopSequence,
+              !stopTimeSequenceKeys.isEmpty else {
+            return false
+        }
+
+        return stopTimeSequenceKeys.contains(
+            TTCStaticScheduleStore.sequenceKey(
+                tripID: liveUpdate.tripID,
+                stopSequence: stopSequence
+            )
+        )
     }
 
     private static func normalizedStopID(_ stopID: String) -> String {

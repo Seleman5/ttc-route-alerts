@@ -17,11 +17,17 @@ struct StopDetailArrivalLoader {
     static let scheduledFallbackMessage = "Showing scheduled fallback times"
 
     var fetchLiveUpdates: () async throws -> [TTCLiveStopTimeUpdate]
+    var fetchStopTimeSequenceKeys: (String) async -> Result<Set<String>, TTCStaticScheduleError>
     var fetchScheduledArrivals: (String) async -> Result<[StopArrival], TTCStaticScheduleError>
 
     init(
         fetchLiveUpdates: @escaping () async throws -> [TTCLiveStopTimeUpdate] = {
             try await TTCTripUpdatesService().fetchTripUpdatesFeed()
+        },
+        fetchStopTimeSequenceKeys: @escaping (String) async -> Result<Set<String>, TTCStaticScheduleError> = { stopID in
+            await Task.detached {
+                TTCStaticScheduleStore.stopTimeSequenceKeys(for: stopID)
+            }.value
         },
         fetchScheduledArrivals: @escaping (String) async -> Result<[StopArrival], TTCStaticScheduleError> = { stopID in
             await Task.detached {
@@ -30,11 +36,13 @@ struct StopDetailArrivalLoader {
         }
     ) {
         self.fetchLiveUpdates = fetchLiveUpdates
+        self.fetchStopTimeSequenceKeys = fetchStopTimeSequenceKeys
         self.fetchScheduledArrivals = fetchScheduledArrivals
     }
 
     func loadArrivals(
         for stopID: String,
+        matchingStopIDs: [String],
         tripRouteData: TTCTripRouteData,
         now: Date = Date(),
         limit: Int = 10
@@ -44,6 +52,7 @@ struct StopDetailArrivalLoader {
             let liveArrivals = TTCTripUpdatesService.stopArrivals(
                 from: liveUpdates,
                 stopID: stopID,
+                alternateStopIDs: matchingStopIDs.filter { $0 != stopID },
                 tripsByID: tripRouteData.tripsByID,
                 routesByID: tripRouteData.routesByID,
                 now: now,
@@ -57,6 +66,29 @@ struct StopDetailArrivalLoader {
                     dataSourceMessage: Self.liveMessage,
                     scheduleError: nil
                 )
+            }
+
+            let sequenceKeysResult = await fetchStopTimeSequenceKeys(stopID)
+            if case .success(let sequenceKeys) = sequenceKeysResult, !sequenceKeys.isEmpty {
+                let sequenceMatchedLiveArrivals = TTCTripUpdatesService.stopArrivals(
+                    from: liveUpdates,
+                    stopID: stopID,
+                    alternateStopIDs: matchingStopIDs.filter { $0 != stopID },
+                    stopTimeSequenceKeys: sequenceKeys,
+                    tripsByID: tripRouteData.tripsByID,
+                    routesByID: tripRouteData.routesByID,
+                    now: now,
+                    limit: limit
+                )
+
+                if !sequenceMatchedLiveArrivals.isEmpty {
+                    return StopDetailArrivalLoadResult(
+                        arrivals: sequenceMatchedLiveArrivals,
+                        dataSource: .live,
+                        dataSourceMessage: Self.liveMessage,
+                        scheduleError: nil
+                    )
+                }
             }
         } catch {
             // If live TTC predictions cannot be loaded, the stop detail screen falls back to static GTFS.
@@ -234,6 +266,7 @@ struct StopDetailView: View {
         let tripRouteData = TTCStaticScheduleStore.bundledTripRouteData()
         let result = await arrivalLoader.loadArrivals(
             for: stopID,
+            matchingStopIDs: nearbyStop.stop.matchingStopIDs,
             tripRouteData: tripRouteData
         )
 

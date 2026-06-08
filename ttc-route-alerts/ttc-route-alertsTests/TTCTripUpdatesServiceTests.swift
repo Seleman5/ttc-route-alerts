@@ -116,6 +116,47 @@ final class TTCTripUpdatesServiceTests: XCTestCase {
         XCTAssertEqual(matchingUpdates.map(\.tripID), ["trip-a"])
     }
 
+    func testMatchingLiveUpdatesMatchesAlternateStopCode() {
+        let updates = [
+            TTCLiveStopTimeUpdate(
+                tripID: "trip-a",
+                routeID: "route-501",
+                stopID: "1001",
+                arrivalDate: Date(timeIntervalSince1970: 1_800_000_300)
+            )
+        ]
+
+        let matchingUpdates = TTCTripUpdatesService.matchingLiveUpdates(
+            from: updates,
+            stopID: "platform-1001",
+            alternateStopIDs: ["1001"]
+        )
+
+        XCTAssertEqual(matchingUpdates.map(\.tripID), ["trip-a"])
+    }
+
+    func testMatchingLiveUpdatesMatchesTripIDAndStopSequenceFallback() {
+        let updates = [
+            TTCLiveStopTimeUpdate(
+                tripID: "trip-a",
+                routeID: "route-501",
+                stopID: "different-stop",
+                stopSequence: 12,
+                arrivalDate: Date(timeIntervalSince1970: 1_800_000_300)
+            )
+        ]
+
+        let matchingUpdates = TTCTripUpdatesService.matchingLiveUpdates(
+            from: updates,
+            stopID: "stop-1",
+            stopTimeSequenceKeys: [
+                TTCStaticScheduleStore.sequenceKey(tripID: "trip-a", stopSequence: 12)
+            ]
+        )
+
+        XCTAssertEqual(matchingUpdates.map(\.tripID), ["trip-a"])
+    }
+
     func testStopArrivalsMapsBranchRouteIDToBaseRoute() {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let updates = [
