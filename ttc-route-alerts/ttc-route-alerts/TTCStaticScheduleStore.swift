@@ -90,6 +90,7 @@ enum TTCStaticScheduleStore {
             .compactMap { stopTime in
                 scheduledArrival(for: stopTime, schedule: schedule)
             }
+            .deduplicatedNearIdenticalScheduledArrivals()
             .prefix(limit)
             .map { $0 }
     }
@@ -361,5 +362,34 @@ enum TTCStaticScheduleStore {
 
         fields.append(currentField)
         return fields
+    }
+}
+
+private extension Array where Element == StopArrival {
+    func deduplicatedNearIdenticalScheduledArrivals() -> [StopArrival] {
+        var arrivalsByRouteAndDirection: [String: StopArrival] = [:]
+        var deduplicatedArrivals: [StopArrival] = []
+
+        for arrival in self {
+            guard arrival.source == .scheduled else {
+                deduplicatedArrivals.append(arrival)
+                continue
+            }
+
+            let key = [
+                arrival.routeNumber.lowercased(),
+                arrival.headsign?.lowercased() ?? ""
+            ].joined(separator: "|")
+
+            if let previousArrival = arrivalsByRouteAndDirection[key],
+               arrival.arrivalSeconds - previousArrival.arrivalSeconds < 180 {
+                continue
+            }
+
+            arrivalsByRouteAndDirection[key] = arrival
+            deduplicatedArrivals.append(arrival)
+        }
+
+        return deduplicatedArrivals
     }
 }

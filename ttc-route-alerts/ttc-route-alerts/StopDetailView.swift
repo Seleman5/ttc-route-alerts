@@ -5,6 +5,80 @@
 
 import SwiftUI
 
+struct StopDetailArrivalLoadResult: Equatable {
+    let arrivals: [StopArrival]
+    let dataSourceMessage: String?
+    let scheduleError: TTCStaticScheduleError?
+}
+
+struct StopDetailArrivalLoader {
+    static let liveMessage = "Live predictions updated just now"
+    static let scheduledFallbackMessage = "Live predictions unavailable. Showing scheduled times."
+
+    var fetchLiveUpdates: () async throws -> [TTCLiveStopTimeUpdate]
+    var fetchScheduledArrivals: (String) async -> Result<[StopArrival], TTCStaticScheduleError>
+
+    init(
+        fetchLiveUpdates: @escaping () async throws -> [TTCLiveStopTimeUpdate] = {
+            try await TTCTripUpdatesService().fetchTripUpdatesFeed()
+        },
+        fetchScheduledArrivals: @escaping (String) async -> Result<[StopArrival], TTCStaticScheduleError> = { stopID in
+            await Task.detached {
+                TTCStaticScheduleStore.upcomingArrivals(for: stopID)
+            }.value
+        }
+    ) {
+        self.fetchLiveUpdates = fetchLiveUpdates
+        self.fetchScheduledArrivals = fetchScheduledArrivals
+    }
+
+    func loadArrivals(
+        for stopID: String,
+        tripRouteData: TTCTripRouteData,
+        now: Date = Date(),
+        limit: Int = 10
+    ) async -> StopDetailArrivalLoadResult {
+        do {
+            let liveUpdates = try await fetchLiveUpdates()
+            let liveArrivals = TTCTripUpdatesService.stopArrivals(
+                from: liveUpdates,
+                stopID: stopID,
+                tripsByID: tripRouteData.tripsByID,
+                routesByID: tripRouteData.routesByID,
+                now: now,
+                limit: limit
+            )
+
+            if !liveArrivals.isEmpty {
+                return StopDetailArrivalLoadResult(
+                    arrivals: liveArrivals,
+                    dataSourceMessage: Self.liveMessage,
+                    scheduleError: nil
+                )
+            }
+        } catch {
+            // If live TTC predictions cannot be loaded, the stop detail screen falls back to static GTFS.
+        }
+
+        let scheduledResult = await fetchScheduledArrivals(stopID)
+
+        switch scheduledResult {
+        case .success(let scheduledArrivals):
+            return StopDetailArrivalLoadResult(
+                arrivals: scheduledArrivals,
+                dataSourceMessage: Self.scheduledFallbackMessage,
+                scheduleError: nil
+            )
+        case .failure(let scheduleError):
+            return StopDetailArrivalLoadResult(
+                arrivals: [],
+                dataSourceMessage: nil,
+                scheduleError: scheduleError
+            )
+        }
+    }
+}
+
 struct StopDetailView: View {
     let nearbyStop: NearbyStop
     let ttcRed: Color
@@ -12,6 +86,9 @@ struct StopDetailView: View {
     @State private var arrivals: [StopArrival] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var dataSourceMessage: String?
+
+    private let arrivalLoader = StopDetailArrivalLoader()
 
     var body: some View {
         ZStack {
@@ -30,6 +107,30 @@ struct StopDetailView: View {
         }
         .navigationTitle("Stop Details")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    Task {
+                        await loadArrivals()
+                    }
+                } label: {
+                    ZStack {
+                        Image(systemName: "arrow.clockwise")
+                            .opacity(isLoading ? 0 : 1)
+
+                        ProgressView()
+                            .controlSize(.small)
+                            .opacity(isLoading ? 1 : 0)
+                    }
+                    .frame(width: 24, height: 24)
+                    .contentShape(Rectangle())
+                }
+                .font(.body.weight(.semibold))
+                .disabled(isLoading)
+                .accessibilityLabel(isLoading ? "Refreshing arrivals" : "Refresh arrivals")
+                .accessibilityHint("Fetches fresh live TTC predictions for this stop.")
+            }
+        }
         .task {
             await loadArrivals()
         }
@@ -83,6 +184,17 @@ struct StopDetailView: View {
                 accessoryText: arrivals.isEmpty ? nil : "\(arrivals.count)"
             )
 
+            if !isLoading, errorMessage == nil, let dataSourceMessage {
+                Text(dataSourceMessage)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(AppDesign.insetBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: AppDesign.smallRadius))
+            }
+
             if isLoading {
                 StopDetailMessageView(
                     systemImage: "clock",
@@ -117,40 +229,19 @@ struct StopDetailView: View {
     private func loadArrivals() async {
         isLoading = true
         errorMessage = nil
+        dataSourceMessage = nil
 
         let stopID = nearbyStop.stop.stopID
         let tripRouteData = TTCStaticScheduleStore.bundledTripRouteData()
+        let result = await arrivalLoader.loadArrivals(
+            for: stopID,
+            tripRouteData: tripRouteData
+        )
 
-        do {
-            let liveArrivals = try await TTCTripUpdatesService().fetchUpcomingArrivals(
-                for: stopID,
-                tripsByID: tripRouteData.tripsByID,
-                routesByID: tripRouteData.routesByID
-            )
+        arrivals = result.arrivals
+        dataSourceMessage = result.dataSourceMessage
 
-            if !liveArrivals.isEmpty {
-                arrivals = StopArrivalSelection.preferredArrivals(
-                    liveArrivals: liveArrivals,
-                    scheduledArrivals: []
-                )
-                isLoading = false
-                return
-            }
-        } catch {
-            print("Could not load TTC live arrivals: \(error.localizedDescription)")
-        }
-
-        let scheduledResult = await Task.detached {
-            TTCStaticScheduleStore.upcomingArrivals(for: stopID)
-        }.value
-
-        switch scheduledResult {
-        case .success(let scheduledArrivals):
-            arrivals = StopArrivalSelection.preferredArrivals(
-                liveArrivals: [],
-                scheduledArrivals: scheduledArrivals
-            )
-        case .failure(let scheduleError):
+        if let scheduleError = result.scheduleError {
             arrivals = []
             errorMessage = message(for: scheduleError)
         }

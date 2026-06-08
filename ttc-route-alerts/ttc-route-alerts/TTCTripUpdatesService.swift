@@ -36,29 +36,26 @@ struct TTCTripUpdatesService {
     }
 
     func fetchTripUpdatesFeed() async throws -> [TTCLiveStopTimeUpdate] {
-        let (data, response) = try await URLSession.shared.data(from: tripUpdatesFeedURL)
+        var request = URLRequest(url: tripUpdatesFeedURL)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.timeoutInterval = 20
+
+        let (data, response) = try await URLSession.shared.data(for: request)
 
         if let httpResponse = response as? HTTPURLResponse {
-            print("TTC trip updates feed status: \(httpResponse.statusCode)")
-
             guard (200...299).contains(httpResponse.statusCode) else {
                 throw URLError(.badServerResponse)
             }
         } else {
-            print("TTC trip updates feed response was not an HTTP response")
             throw URLError(.badServerResponse)
         }
 
-        print("TTC trip updates feed data size: \(data.count) bytes")
         return try decodedTripUpdates(from: data)
     }
 
     func decodedTripUpdates(from data: Data) throws -> [TTCLiveStopTimeUpdate] {
         let feed = try TransitRealtime_FeedMessage(serializedBytes: data)
-        let updates = liveStopTimeUpdates(from: feed)
-
-        print("Decoded TTC live stop time updates: \(updates.count)")
-        return updates
+        return liveStopTimeUpdates(from: feed)
     }
 
     func liveStopTimeUpdates(from feed: TransitRealtime_FeedMessage) -> [TTCLiveStopTimeUpdate] {
@@ -102,9 +99,9 @@ struct TTCTripUpdatesService {
         now: Date = Date(),
         limit: Int = 10
     ) -> [StopArrival] {
-        liveUpdates
+        matchingLiveUpdates(from: liveUpdates, stopID: stopID)
             .filter { update in
-                update.stopID == stopID && update.arrivalDate >= now
+                update.arrivalDate >= now
             }
             .sorted { firstUpdate, secondUpdate in
                 firstUpdate.arrivalDate < secondUpdate.arrivalDate
@@ -126,6 +123,15 @@ struct TTCTripUpdatesService {
             }
             .prefix(limit)
             .map { $0 }
+    }
+
+    static func matchingLiveUpdates(
+        from liveUpdates: [TTCLiveStopTimeUpdate],
+        stopID: String
+    ) -> [TTCLiveStopTimeUpdate] {
+        liveUpdates.filter { update in
+            stopIDsMatch(update.stopID, stopID)
+        }
     }
 
     private func liveStopTimeUpdate(
@@ -168,7 +174,7 @@ struct TTCTripUpdatesService {
         let routeID = liveUpdate.routeID ?? tripsByID[liveUpdate.tripID]?.routeID
 
         guard let routeID,
-              let route = routesByID[routeID] else {
+              let route = route(for: routeID, routesByID: routesByID) else {
             return nil
         }
 
@@ -184,6 +190,65 @@ struct TTCTripUpdatesService {
             arrivalDate: liveUpdate.arrivalDate,
             source: .live
         )
+    }
+
+    private static func stopIDsMatch(_ firstStopID: String, _ secondStopID: String) -> Bool {
+        let first = firstStopID.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let second = secondStopID.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+        if first == second {
+            return true
+        }
+
+        if normalizedStopID(first) == normalizedStopID(second) {
+            return true
+        }
+
+        guard let firstLeadingNumber = leadingNumber(in: first),
+              let secondLeadingNumber = leadingNumber(in: second) else {
+            return false
+        }
+
+        return (first == firstLeadingNumber && secondLeadingNumber == first)
+            || (second == secondLeadingNumber && firstLeadingNumber == second)
+    }
+
+    private static func normalizedStopID(_ stopID: String) -> String {
+        stopID
+            .filter { character in
+                character.isLetter || character.isNumber
+            }
+            .lowercased()
+    }
+
+    private static func route(
+        for routeID: String,
+        routesByID: [String: SuggestedRoute]
+    ) -> SuggestedRoute? {
+        if let route = routesByID[routeID] {
+            return route
+        }
+
+        guard let routeNumber = leadingNumber(in: routeID) else {
+            return nil
+        }
+
+        return routesByID.values.first { route in
+            route.routeID == routeNumber || route.routeNumber == routeNumber
+        }
+    }
+
+    private static func leadingNumber(in text: String) -> String? {
+        let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let digits = trimmedText.prefix { character in
+            character.isNumber
+        }
+
+        guard !digits.isEmpty else {
+            return nil
+        }
+
+        return String(digits)
     }
 
     private static func displayTime(for date: Date) -> String {
