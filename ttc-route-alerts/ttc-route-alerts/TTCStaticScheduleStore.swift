@@ -18,13 +18,19 @@ struct GTFSTrip: Equatable {
     let headsign: String?
 }
 
-struct ScheduledStopArrival: Identifiable, Equatable {
+enum StopArrivalSource: String, Equatable {
+    case live = "Live"
+    case scheduled = "Scheduled"
+}
+
+struct StopArrival: Identifiable, Equatable {
     let id: String
     let routeNumber: String
     let routeName: String
     let headsign: String?
     let arrivalTime: String
     let arrivalSeconds: Int
+    let source: StopArrivalSource
 }
 
 enum TTCStaticScheduleError: Error, Equatable {
@@ -37,13 +43,18 @@ struct TTCStaticScheduleData {
     let routesByID: [String: SuggestedRoute]
 }
 
+struct TTCTripRouteData {
+    let tripsByID: [String: GTFSTrip]
+    let routesByID: [String: SuggestedRoute]
+}
+
 enum TTCStaticScheduleStore {
     static func upcomingArrivals(
         for stopID: String,
         now: Date = Date(),
         calendar: Calendar = .current,
         limit: Int = 10
-    ) -> Result<[ScheduledStopArrival], TTCStaticScheduleError> {
+    ) -> Result<[StopArrival], TTCStaticScheduleError> {
         bundledScheduleResult.map { schedule in
             upcomingArrivals(
                 for: stopID,
@@ -59,7 +70,7 @@ enum TTCStaticScheduleStore {
         in schedule: TTCStaticScheduleData,
         currentSeconds: Int,
         limit: Int = 10
-    ) -> [ScheduledStopArrival] {
+    ) -> [StopArrival] {
         let stopTimes = schedule.stopTimesByStopID[stopID] ?? []
 
         return stopTimes
@@ -192,6 +203,13 @@ enum TTCStaticScheduleStore {
             + (components.second ?? 0)
     }
 
+    static func bundledTripRouteData() -> TTCTripRouteData {
+        let trips = loadBundledTrips()
+        let routes = RouteSuggestion.suggestedRoutes
+
+        return tripRouteData(trips: trips, routes: routes)
+    }
+
     private static let bundledScheduleResult: Result<TTCStaticScheduleData, TTCStaticScheduleError> = {
         do {
             return .success(try loadBundledSchedule())
@@ -223,6 +241,15 @@ enum TTCStaticScheduleStore {
         )
     }
 
+    private static func loadBundledTrips() -> [GTFSTrip] {
+        guard let tripsFileURL = Bundle.main.url(forResource: "trips", withExtension: "txt"),
+              let tripsText = try? String(contentsOf: tripsFileURL, encoding: .utf8) else {
+            return []
+        }
+
+        return parseTrips(from: tripsText)
+    }
+
     static func scheduleData(
         stopTimes: [GTFSStopTime],
         trips: [GTFSTrip],
@@ -251,22 +278,42 @@ enum TTCStaticScheduleStore {
         )
     }
 
+    static func tripRouteData(
+        trips: [GTFSTrip],
+        routes: [SuggestedRoute]
+    ) -> TTCTripRouteData {
+        var tripsByID: [String: GTFSTrip] = [:]
+        for trip in trips {
+            tripsByID[trip.tripID] = trip
+        }
+
+        var routesByID: [String: SuggestedRoute] = [:]
+        for route in routes {
+            if let routeID = route.routeID {
+                routesByID[routeID] = route
+            }
+        }
+
+        return TTCTripRouteData(tripsByID: tripsByID, routesByID: routesByID)
+    }
+
     private static func scheduledArrival(
         for stopTime: GTFSStopTime,
         schedule: TTCStaticScheduleData
-    ) -> ScheduledStopArrival? {
+    ) -> StopArrival? {
         guard let trip = schedule.tripsByID[stopTime.tripID],
               let route = schedule.routesByID[trip.routeID] else {
             return nil
         }
 
-        return ScheduledStopArrival(
+        return StopArrival(
             id: "\(stopTime.tripID)-\(stopTime.stopID)-\(stopTime.arrivalTime)",
             routeNumber: route.routeNumber,
             routeName: route.nickname,
             headsign: trip.headsign,
             arrivalTime: stopTime.arrivalTime,
-            arrivalSeconds: stopTime.arrivalSeconds
+            arrivalSeconds: stopTime.arrivalSeconds,
+            source: .scheduled
         )
     }
 

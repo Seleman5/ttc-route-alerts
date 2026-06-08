@@ -69,6 +69,7 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
         XCTAssertEqual(arrivals[0].routeName, "Queen")
         XCTAssertEqual(arrivals[0].headsign, "First")
         XCTAssertEqual(arrivals[0].arrivalTime, "08:10:00")
+        XCTAssertEqual(arrivals[0].source, .scheduled)
     }
 
     func testSecondsSinceMidnightRejectsInvalidTimes() {

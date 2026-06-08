@@ -9,7 +9,7 @@ struct StopDetailView: View {
     let nearbyStop: NearbyStop
     let ttcRed: Color
 
-    @State private var arrivals: [ScheduledStopArrival] = []
+    @State private var arrivals: [StopArrival] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
 
@@ -77,7 +77,7 @@ struct StopDetailView: View {
     private var arrivalsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HomeSectionHeaderView(
-                title: "Scheduled Arrivals",
+                title: "Arrivals",
                 systemImage: "clock.fill",
                 tint: ttcRed,
                 accessoryText: arrivals.isEmpty ? nil : "\(arrivals.count)"
@@ -87,7 +87,7 @@ struct StopDetailView: View {
                 StopDetailMessageView(
                     systemImage: "clock",
                     title: "Loading arrivals",
-                    message: "Checking the schedule for this stop.",
+                    message: "Checking live arrivals for this stop.",
                     tint: ttcRed,
                     isLoading: true
                 )
@@ -119,16 +119,34 @@ struct StopDetailView: View {
         errorMessage = nil
 
         let stopID = nearbyStop.stop.stopID
-        let result = await Task.detached {
+        let tripRouteData = TTCStaticScheduleStore.bundledTripRouteData()
+
+        do {
+            let liveArrivals = try await TTCTripUpdatesService().fetchUpcomingArrivals(
+                for: stopID,
+                tripsByID: tripRouteData.tripsByID,
+                routesByID: tripRouteData.routesByID
+            )
+
+            if !liveArrivals.isEmpty {
+                arrivals = liveArrivals
+                isLoading = false
+                return
+            }
+        } catch {
+            print("Could not load TTC live arrivals: \(error.localizedDescription)")
+        }
+
+        let scheduledResult = await Task.detached {
             TTCStaticScheduleStore.upcomingArrivals(for: stopID)
         }.value
 
-        switch result {
-        case .success(let upcomingArrivals):
-            arrivals = upcomingArrivals
-        case .failure(let error):
+        switch scheduledResult {
+        case .success(let scheduledArrivals):
+            arrivals = scheduledArrivals
+        case .failure(let scheduleError):
             arrivals = []
-            errorMessage = message(for: error)
+            errorMessage = message(for: scheduleError)
         }
 
         isLoading = false
@@ -151,7 +169,7 @@ struct StopDetailView: View {
 }
 
 private struct ScheduledArrivalRow: View {
-    let arrival: ScheduledStopArrival
+    let arrival: StopArrival
     let ttcRed: Color
 
     var body: some View {
@@ -170,6 +188,14 @@ private struct ScheduledArrivalRow: View {
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+
+                Text(arrival.source.rawValue)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(arrival.source == .live ? .green : .secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background((arrival.source == .live ? Color.green : Color.secondary).opacity(0.10))
+                    .clipShape(Capsule())
             }
 
             Spacer(minLength: 12)
