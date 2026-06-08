@@ -7,13 +7,14 @@ import SwiftUI
 
 struct StopDetailArrivalLoadResult: Equatable {
     let arrivals: [StopArrival]
+    let dataSource: StopArrivalSource?
     let dataSourceMessage: String?
     let scheduleError: TTCStaticScheduleError?
 }
 
 struct StopDetailArrivalLoader {
-    static let liveMessage = "Live predictions updated just now"
-    static let scheduledFallbackMessage = "Live predictions unavailable. Showing scheduled times."
+    static let liveMessage = "Showing live TTC predictions"
+    static let scheduledFallbackMessage = "Showing scheduled fallback times"
 
     var fetchLiveUpdates: () async throws -> [TTCLiveStopTimeUpdate]
     var fetchScheduledArrivals: (String) async -> Result<[StopArrival], TTCStaticScheduleError>
@@ -52,6 +53,7 @@ struct StopDetailArrivalLoader {
             if !liveArrivals.isEmpty {
                 return StopDetailArrivalLoadResult(
                     arrivals: liveArrivals,
+                    dataSource: .live,
                     dataSourceMessage: Self.liveMessage,
                     scheduleError: nil
                 )
@@ -66,12 +68,14 @@ struct StopDetailArrivalLoader {
         case .success(let scheduledArrivals):
             return StopDetailArrivalLoadResult(
                 arrivals: scheduledArrivals,
+                dataSource: .scheduled,
                 dataSourceMessage: Self.scheduledFallbackMessage,
                 scheduleError: nil
             )
         case .failure(let scheduleError):
             return StopDetailArrivalLoadResult(
                 arrivals: [],
+                dataSource: nil,
                 dataSourceMessage: nil,
                 scheduleError: scheduleError
             )
@@ -86,6 +90,7 @@ struct StopDetailView: View {
     @State private var arrivals: [StopArrival] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var dataSource: StopArrivalSource?
     @State private var dataSourceMessage: String?
 
     private let arrivalLoader = StopDetailArrivalLoader()
@@ -184,15 +189,8 @@ struct StopDetailView: View {
                 accessoryText: arrivals.isEmpty ? nil : "\(arrivals.count)"
             )
 
-            if !isLoading, errorMessage == nil, let dataSourceMessage {
-                Text(dataSourceMessage)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
-                    .background(AppDesign.insetBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: AppDesign.smallRadius))
+            if !isLoading, errorMessage == nil, let dataSource, let dataSourceMessage {
+                ArrivalSourceStatusView(source: dataSource, message: dataSourceMessage)
             }
 
             if isLoading {
@@ -229,6 +227,7 @@ struct StopDetailView: View {
     private func loadArrivals() async {
         isLoading = true
         errorMessage = nil
+        dataSource = nil
         dataSourceMessage = nil
 
         let stopID = nearbyStop.stop.stopID
@@ -239,10 +238,12 @@ struct StopDetailView: View {
         )
 
         arrivals = result.arrivals
+        dataSource = result.dataSource
         dataSourceMessage = result.dataSourceMessage
 
         if let scheduleError = result.scheduleError {
             arrivals = []
+            dataSource = nil
             errorMessage = message(for: scheduleError)
         }
 
@@ -262,6 +263,32 @@ struct StopDetailView: View {
 
     private func distanceAccessibilityText(for distance: Double) -> String {
         "\(Int(distance.rounded())) meters away"
+    }
+}
+
+private struct ArrivalSourceStatusView: View {
+    let source: StopArrivalSource
+    let message: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ArrivalSourceDot(source: source, size: 10)
+
+            Text(message)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(sourceColor)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(sourceColor.opacity(source == .live ? 0.10 : 0.07))
+        .clipShape(RoundedRectangle(cornerRadius: AppDesign.smallRadius))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(message)
+    }
+
+    private var sourceColor: Color {
+        source == .live ? .green : .secondary
     }
 }
 
@@ -286,13 +313,7 @@ private struct ScheduledArrivalRow: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
-                Text(arrival.source.rawValue)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(arrival.source == .live ? .green : .secondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background((arrival.source == .live ? Color.green : Color.secondary).opacity(0.10))
-                    .clipShape(Capsule())
+                arrivalSourceBadge
             }
 
             Spacer(minLength: 12)
@@ -311,7 +332,14 @@ private struct ScheduledArrivalRow: View {
             .accessibilityLabel("\(relativeArrivalText(for: arrival)), \(clockTimeText(for: arrival))")
         }
         .appCardStyle(padding: 14, cornerRadius: AppDesign.smallRadius)
+        .overlay(alignment: .leading) {
+            RoundedRectangle(cornerRadius: AppDesign.smallRadius)
+                .fill(sourceColor.opacity(arrival.source == .live ? 0.75 : 0.30))
+                .frame(width: 3)
+                .padding(.vertical, 10)
+        }
         .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityText)
     }
 
     private var routeBadge: some View {
@@ -323,6 +351,31 @@ private struct ScheduledArrivalRow: View {
             .frame(width: 44, height: 36)
             .background(ttcRed)
             .clipShape(RoundedRectangle(cornerRadius: AppDesign.iconRadius))
+    }
+
+    private var arrivalSourceBadge: some View {
+        HStack(spacing: 6) {
+            ArrivalSourceDot(source: arrival.source, size: 8)
+
+            Text(arrival.source.rawValue)
+                .font(.caption.weight(.semibold))
+        }
+        .foregroundStyle(sourceColor)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 5)
+        .background(sourceColor.opacity(arrival.source == .live ? 0.14 : 0.08))
+        .clipShape(Capsule())
+        .accessibilityLabel(arrival.source == .live ? "Live prediction" : "Scheduled fallback")
+    }
+
+    private var sourceColor: Color {
+        arrival.source == .live ? .green : .secondary
+    }
+
+    private var accessibilityText: String {
+        let sourceText = arrival.source == .live ? "Live prediction" : "Scheduled fallback"
+        let headsignText = arrival.headsign.map { ", \($0)" } ?? ""
+        return "\(sourceText), route \(arrival.routeNumber), \(arrival.routeName)\(headsignText), \(relativeArrivalText(for: arrival)), \(clockTimeText(for: arrival))"
     }
 
     private func relativeArrivalText(for arrival: StopArrival) -> String {
@@ -379,6 +432,28 @@ private struct ScheduledArrivalRow: View {
 
     private func currentSecondsSinceMidnight() -> Int {
         TTCStaticScheduleStore.secondsSinceMidnight(for: Date())
+    }
+}
+
+private struct ArrivalSourceDot: View {
+    let source: StopArrivalSource
+    let size: CGFloat
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(sourceColor.opacity(source == .live ? 0.18 : 0.10))
+                .frame(width: size + 8, height: size + 8)
+
+            Circle()
+                .fill(sourceColor)
+                .frame(width: size, height: size)
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var sourceColor: Color {
+        source == .live ? .green : .secondary
     }
 }
 

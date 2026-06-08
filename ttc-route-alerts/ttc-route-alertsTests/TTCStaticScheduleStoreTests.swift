@@ -159,6 +159,7 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
 
         XCTAssertEqual(result.arrivals.count, 1)
         XCTAssertEqual(result.arrivals[0].source, .live)
+        XCTAssertEqual(result.dataSource, .live)
         XCTAssertEqual(result.dataSourceMessage, StopDetailArrivalLoader.liveMessage)
         XCTAssertEqual(result.scheduleError, nil)
         XCTAssertEqual(scheduledFetchCount, 0)
@@ -183,6 +184,7 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
         )
 
         XCTAssertEqual(result.arrivals, [scheduledArrival])
+        XCTAssertEqual(result.dataSource, .scheduled)
         XCTAssertEqual(result.dataSourceMessage, StopDetailArrivalLoader.scheduledFallbackMessage)
         XCTAssertEqual(result.scheduleError, nil)
         XCTAssertEqual(scheduledFetchCount, 1)
