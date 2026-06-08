@@ -8,9 +8,19 @@
 import SwiftUI
 
 struct ContentView: View {
+    private enum MainScreen: String, CaseIterable, Identifiable {
+        case alerts = "Alerts"
+        case nearby = "Nearby"
+
+        var id: String {
+            rawValue
+        }
+    }
+
     @AppStorage("notificationsEnabled") private var notificationsEnabled = false
     @AppStorage(RefreshPreference.storageKey) private var refreshPreference = RefreshPreference.manualOnly.rawValue
     @Environment(\.scenePhase) private var scenePhase
+    @State private var selectedMainScreen = MainScreen.alerts
     @State private var selectedRouteType = RouteType.subway
     @State private var routeNumberInput = ""
     @State private var routeNicknameInput = ""
@@ -45,23 +55,10 @@ struct ContentView: View {
                 appBackground
                     .ignoresSafeArea()
 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: AppDesign.sectionSpacing) {
-                        headerSection
-                        addRouteSection
-                        routesSection
-                    }
-                    .padding(.horizontal, AppDesign.screenHorizontalPadding)
-                    .padding(.top, 12)
-                    .padding(.bottom, 48)
-                }
-                .safeAreaInset(edge: .bottom) {
-                    Color.clear
-                        .frame(height: 16)
-                }
-                .scrollDismissesKeyboard(.interactively)
-                .refreshable {
-                    await refreshAlerts(shouldSendNotifications: true)
+                if selectedMainScreen == .alerts {
+                    alertsScreen
+                } else {
+                    nearbyScreen
                 }
             }
             .navigationTitle("TTC Route Alerts")
@@ -79,26 +76,28 @@ struct ContentView: View {
                 }
 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        Task {
-                            await refreshAlerts(shouldSendNotifications: true)
-                        }
-                    } label: {
-                        ZStack {
-                            Image(systemName: "arrow.clockwise")
-                                .opacity(isRefreshing ? 0 : 1)
+                    if selectedMainScreen == .alerts {
+                        Button {
+                            Task {
+                                await refreshAlerts(shouldSendNotifications: true)
+                            }
+                        } label: {
+                            ZStack {
+                                Image(systemName: "arrow.clockwise")
+                                    .opacity(isRefreshing ? 0 : 1)
 
-                            ProgressView()
-                                .controlSize(.small)
-                                .opacity(isRefreshing ? 1 : 0)
+                                ProgressView()
+                                    .controlSize(.small)
+                                    .opacity(isRefreshing ? 1 : 0)
+                            }
+                            .frame(width: 24, height: 24)
+                            .contentShape(Rectangle())
                         }
-                        .frame(width: 24, height: 24)
-                        .contentShape(Rectangle())
+                        .font(.body.weight(.semibold))
+                        .disabled(isRefreshing)
+                        .accessibilityLabel(isRefreshing ? "Refreshing alerts" : "Refresh alerts")
+                        .accessibilityHint("Fetches the latest TTC alerts for your saved routes.")
                     }
-                    .font(.body.weight(.semibold))
-                    .disabled(isRefreshing)
-                    .accessibilityLabel(isRefreshing ? "Refreshing alerts" : "Refresh alerts")
-                    .accessibilityHint("Fetches the latest TTC alerts for your saved routes.")
                 }
             }
         }
@@ -131,6 +130,55 @@ struct ContentView: View {
                 stopAutoRefresh()
             }
         }
+    }
+
+    var alertsScreen: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: AppDesign.sectionSpacing) {
+                screenToggle
+                headerSection
+                addRouteSection
+                routesSection
+            }
+            .padding(.horizontal, AppDesign.screenHorizontalPadding)
+            .padding(.top, 12)
+            .padding(.bottom, 48)
+        }
+        .safeAreaInset(edge: .bottom) {
+            Color.clear
+                .frame(height: 16)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .refreshable {
+            await refreshAlerts(shouldSendNotifications: true)
+        }
+    }
+
+    var nearbyScreen: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: AppDesign.sectionSpacing) {
+                screenToggle
+                NearbyStopsView(ttcRed: ttcRed)
+            }
+            .padding(.horizontal, AppDesign.screenHorizontalPadding)
+            .padding(.top, 12)
+            .padding(.bottom, 48)
+        }
+        .safeAreaInset(edge: .bottom) {
+            Color.clear
+                .frame(height: 16)
+        }
+    }
+
+    var screenToggle: some View {
+        Picker("Screen", selection: $selectedMainScreen) {
+            ForEach(MainScreen.allCases) { screen in
+                Text(screen.rawValue).tag(screen)
+            }
+        }
+        .pickerStyle(.segmented)
+        .accessibilityLabel("Main screen")
+        .accessibilityHint("Switches between route alerts and nearby stops.")
     }
 
     var headerSection: some View {
