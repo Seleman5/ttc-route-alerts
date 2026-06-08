@@ -76,4 +76,40 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
         XCTAssertNil(TTCStaticScheduleStore.secondsSinceMidnight(in: "08:75:00"))
         XCTAssertNil(TTCStaticScheduleStore.secondsSinceMidnight(in: "not-a-time"))
     }
+
+    func testPreferredArrivalsUsesLiveRowsWithoutMixingScheduledRows() {
+        let liveArrival = stopArrival(id: "live", source: .live)
+        let scheduledArrival = stopArrival(id: "scheduled", source: .scheduled)
+
+        let preferredArrivals = StopArrivalSelection.preferredArrivals(
+            liveArrivals: [liveArrival],
+            scheduledArrivals: [scheduledArrival]
+        )
+
+        XCTAssertEqual(preferredArrivals, [liveArrival])
+    }
+
+    func testPreferredArrivalsFallsBackToScheduledWhenLiveIsEmpty() {
+        let scheduledArrival = stopArrival(id: "scheduled", source: .scheduled)
+
+        let preferredArrivals = StopArrivalSelection.preferredArrivals(
+            liveArrivals: [],
+            scheduledArrivals: [scheduledArrival]
+        )
+
+        XCTAssertEqual(preferredArrivals, [scheduledArrival])
+    }
+
+    private func stopArrival(id: String, source: StopArrivalSource) -> StopArrival {
+        StopArrival(
+            id: id,
+            routeNumber: "501",
+            routeName: "Queen",
+            headsign: "Long Branch",
+            arrivalTime: "08:10:00",
+            arrivalSeconds: 29_400,
+            arrivalDate: source == .live ? Date(timeIntervalSince1970: 1_800_000_200) : nil,
+            source: source
+        )
+    }
 }

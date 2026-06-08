@@ -109,12 +109,20 @@ struct TTCTripUpdatesService {
             .sorted { firstUpdate, secondUpdate in
                 firstUpdate.arrivalDate < secondUpdate.arrivalDate
             }
-            .compactMap { update in
-                stopArrival(
+            .reduce(into: [StopArrival]()) { arrivals, update in
+                guard let arrival = stopArrival(
                     from: update,
                     tripsByID: tripsByID,
                     routesByID: routesByID
-                )
+                ) else {
+                    return
+                }
+
+                if !arrivals.contains(where: { existingArrival in
+                    existingArrival.id == arrival.id
+                }) {
+                    arrivals.append(arrival)
+                }
             }
             .prefix(limit)
             .map { $0 }
@@ -167,12 +175,13 @@ struct TTCTripUpdatesService {
         let headsign = tripsByID[liveUpdate.tripID]?.headsign
 
         return StopArrival(
-            id: "live-\(liveUpdate.tripID)-\(liveUpdate.stopID)-\(Int(liveUpdate.arrivalDate.timeIntervalSince1970))",
+            id: "live-\(liveUpdate.tripID)-\(liveUpdate.stopID)-\(routeID)-\(Int(liveUpdate.arrivalDate.timeIntervalSince1970))",
             routeNumber: route.routeNumber,
             routeName: route.nickname,
             headsign: headsign,
             arrivalTime: displayTime(for: liveUpdate.arrivalDate),
             arrivalSeconds: TTCStaticScheduleStore.secondsSinceMidnight(for: liveUpdate.arrivalDate),
+            arrivalDate: liveUpdate.arrivalDate,
             source: .live
         )
     }

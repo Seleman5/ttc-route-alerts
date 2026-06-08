@@ -129,7 +129,10 @@ struct StopDetailView: View {
             )
 
             if !liveArrivals.isEmpty {
-                arrivals = liveArrivals
+                arrivals = StopArrivalSelection.preferredArrivals(
+                    liveArrivals: liveArrivals,
+                    scheduledArrivals: []
+                )
                 isLoading = false
                 return
             }
@@ -143,7 +146,10 @@ struct StopDetailView: View {
 
         switch scheduledResult {
         case .success(let scheduledArrivals):
-            arrivals = scheduledArrivals
+            arrivals = StopArrivalSelection.preferredArrivals(
+                liveArrivals: [],
+                scheduledArrivals: scheduledArrivals
+            )
         case .failure(let scheduleError):
             arrivals = []
             errorMessage = message(for: scheduleError)
@@ -200,11 +206,18 @@ private struct ScheduledArrivalRow: View {
 
             Spacer(minLength: 12)
 
-            Text(displayTime(for: arrival.arrivalTime))
-                .font(.headline.weight(.semibold))
-                .foregroundStyle(ttcRed)
-                .monospacedDigit()
-                .accessibilityLabel("Scheduled at \(displayTime(for: arrival.arrivalTime))")
+            VStack(alignment: .trailing, spacing: 3) {
+                Text(relativeArrivalText(for: arrival))
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(ttcRed)
+                    .multilineTextAlignment(.trailing)
+
+                Text(clockTimeText(for: arrival))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
+            .accessibilityLabel("\(relativeArrivalText(for: arrival)), \(clockTimeText(for: arrival))")
         }
         .appCardStyle(padding: 14, cornerRadius: AppDesign.smallRadius)
         .accessibilityElement(children: .combine)
@@ -221,6 +234,43 @@ private struct ScheduledArrivalRow: View {
             .clipShape(RoundedRectangle(cornerRadius: AppDesign.iconRadius))
     }
 
+    private func relativeArrivalText(for arrival: StopArrival) -> String {
+        let secondsUntilArrival: TimeInterval
+
+        if let arrivalDate = arrival.arrivalDate {
+            secondsUntilArrival = arrivalDate.timeIntervalSinceNow
+        } else {
+            secondsUntilArrival = TimeInterval(arrival.arrivalSeconds - currentSecondsSinceMidnight())
+        }
+
+        let minutesUntilArrival = max(0, Int((secondsUntilArrival / 60).rounded()))
+
+        if minutesUntilArrival == 0 {
+            return "Arriving now"
+        }
+
+        if minutesUntilArrival == 1 {
+            return "Arrives in 1 min"
+        }
+
+        return "Arrives in \(minutesUntilArrival) min"
+    }
+
+    private func clockTimeText(for arrival: StopArrival) -> String {
+        if let arrivalDate = arrival.arrivalDate {
+            return displayTime(for: arrivalDate)
+        }
+
+        return displayTime(for: arrival.arrivalTime)
+    }
+
+    private func displayTime(for date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .none
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+
     private func displayTime(for gtfsTime: String) -> String {
         guard let arrivalSeconds = TTCStaticScheduleStore.secondsSinceMidnight(in: gtfsTime) else {
             return gtfsTime
@@ -234,6 +284,10 @@ private struct ScheduledArrivalRow: View {
         let suffix = hours < 12 ? "AM" : "PM"
 
         return String(format: "%d:%02d %@", displayHour, minutes, suffix)
+    }
+
+    private func currentSecondsSinceMidnight() -> Int {
+        TTCStaticScheduleStore.secondsSinceMidnight(for: Date())
     }
 }
 

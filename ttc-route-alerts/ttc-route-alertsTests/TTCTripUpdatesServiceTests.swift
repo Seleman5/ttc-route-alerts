@@ -43,6 +43,55 @@ final class TTCTripUpdatesServiceTests: XCTestCase {
         XCTAssertEqual(updates[0].arrivalDate, Date(timeIntervalSince1970: 1_800_000_200))
     }
 
+    func testLiveStopTimeUpdatesPrefersArrivalWhenArrivalAndDepartureExist() {
+        var stopTimeUpdate = TransitRealtime_TripUpdate.StopTimeUpdate()
+        stopTimeUpdate.stopID = "stop-1"
+        var arrival = TransitRealtime_TripUpdate.StopTimeEvent()
+        arrival.time = 1_800_000_100
+        var departure = TransitRealtime_TripUpdate.StopTimeEvent()
+        departure.time = 1_800_000_200
+        stopTimeUpdate.arrival = arrival
+        stopTimeUpdate.departure = departure
+
+        let feed = tripUpdatesFeed(
+            tripID: "trip-a",
+            routeID: "route-501",
+            stopTimeUpdates: [stopTimeUpdate]
+        )
+
+        let updates = TTCTripUpdatesService().liveStopTimeUpdates(from: feed)
+
+        XCTAssertEqual(updates.count, 1)
+        XCTAssertEqual(updates[0].arrivalDate, Date(timeIntervalSince1970: 1_800_000_100))
+    }
+
+    func testStopArrivalsDeduplicatesSameTripStopRouteAndArrivalTime() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let duplicateUpdate = TTCLiveStopTimeUpdate(
+            tripID: "trip-a",
+            routeID: "route-501",
+            stopID: "stop-1",
+            arrivalDate: Date(timeIntervalSince1970: 1_800_000_300)
+        )
+        let tripsByID = [
+            "trip-a": GTFSTrip(tripID: "trip-a", routeID: "route-501", headsign: "Long Branch")
+        ]
+        let routesByID = [
+            "route-501": SuggestedRoute(routeID: "route-501", routeType: .streetcar, routeNumber: "501", nickname: "Queen")
+        ]
+
+        let arrivals = TTCTripUpdatesService.stopArrivals(
+            from: [duplicateUpdate, duplicateUpdate],
+            stopID: "stop-1",
+            tripsByID: tripsByID,
+            routesByID: routesByID,
+            now: now
+        )
+
+        XCTAssertEqual(arrivals.count, 1)
+        XCTAssertEqual(arrivals[0].id, "live-trip-a-stop-1-route-501-1800000300")
+    }
+
     func testStopArrivalsFiltersPastRowsSortsAndLabelsLive() {
         let now = Date(timeIntervalSince1970: 1_800_000_100)
         let updates = [
@@ -94,6 +143,7 @@ final class TTCTripUpdatesServiceTests: XCTestCase {
         XCTAssertEqual(arrivals[0].routeName, "Queen")
         XCTAssertEqual(arrivals[0].headsign, "First headsign")
         XCTAssertEqual(arrivals[0].source, .live)
+        XCTAssertEqual(arrivals[0].arrivalDate, Date(timeIntervalSince1970: 1_800_000_200))
     }
 
     private func tripUpdatesFeed(

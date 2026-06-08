@@ -30,7 +30,14 @@ struct StopArrival: Identifiable, Equatable {
     let headsign: String?
     let arrivalTime: String
     let arrivalSeconds: Int
+    let arrivalDate: Date?
     let source: StopArrivalSource
+}
+
+enum StopArrivalSelection {
+    static func preferredArrivals(liveArrivals: [StopArrival], scheduledArrivals: [StopArrival]) -> [StopArrival] {
+        liveArrivals.isEmpty ? scheduledArrivals : liveArrivals
+    }
 }
 
 enum TTCStaticScheduleError: Error, Equatable {
@@ -313,6 +320,7 @@ enum TTCStaticScheduleStore {
             headsign: trip.headsign,
             arrivalTime: stopTime.arrivalTime,
             arrivalSeconds: stopTime.arrivalSeconds,
+            arrivalDate: nil,
             source: .scheduled
         )
     }
