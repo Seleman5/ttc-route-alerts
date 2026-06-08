@@ -91,7 +91,13 @@ struct NearbyStopsView: View {
             }
 
             ForEach(TTCStopsStore.closestStops(to: currentLocation, from: stops)) { nearbyStop in
-                NearbyStopRow(nearbyStop: nearbyStop, ttcRed: ttcRed)
+                NavigationLink {
+                    StopDetailView(nearbyStop: nearbyStop, ttcRed: ttcRed)
+                } label: {
+                    NearbyStopRow(nearbyStop: nearbyStop, ttcRed: ttcRed)
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Opens scheduled arrivals for \(nearbyStop.stop.stopName).")
             }
 
             Button {
