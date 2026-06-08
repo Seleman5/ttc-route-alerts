@@ -21,16 +21,26 @@ struct RouteMatcher {
 
     private static func routeIDMatchIsSafeForRoute(alertText: String, route: TTCAlertRoute) -> Bool {
         let routeType = route.routeType ?? .bus
+        let lowercaseAlert = alertText.lowercased()
+        let alertWords = words(in: lowercaseAlert)
+        let savedRouteNumber = routeNumber(for: route)
+
+        if routeType == .subway {
+            return subwayRouteIDMatchIsSafe(
+                lowercaseAlert: lowercaseAlert,
+                alertWords: alertWords,
+                route: route,
+                savedRouteNumber: savedRouteNumber
+            )
+        }
 
         guard routeType == .bus || routeType == .streetcar else {
             return true
         }
 
-        let alertWords = words(in: alertText.lowercased())
-
         if matchesSurfaceRouteText(
             alertWords: alertWords,
-            savedRouteNumber: routeNumber(for: route),
+            savedRouteNumber: savedRouteNumber,
             routeType: routeType
         ) {
             return true
@@ -100,10 +110,61 @@ struct RouteMatcher {
         route: TTCAlertRoute,
         savedRouteNumber: String?
     ) -> Bool {
-        if let savedRouteNumber, alertWords.contains(savedRouteNumber) {
+        if subwayTextExplicitlyMatchesRoute(
+            lowercaseAlert: lowercaseAlert,
+            alertWords: alertWords,
+            route: route,
+            savedRouteNumber: savedRouteNumber
+        ) {
             return true
         }
 
+        if containsStationOnlyAlertWords(alertWords) {
+            return false
+        }
+
+        return false
+    }
+
+    private static func subwayRouteIDMatchIsSafe(
+        lowercaseAlert: String,
+        alertWords: [String],
+        route: TTCAlertRoute,
+        savedRouteNumber: String?
+    ) -> Bool {
+        if subwayTextExplicitlyMatchesRoute(
+            lowercaseAlert: lowercaseAlert,
+            alertWords: alertWords,
+            route: route,
+            savedRouteNumber: savedRouteNumber
+        ) {
+            return true
+        }
+
+        if !explicitlyMentionedLineNumbers(in: alertWords).isEmpty {
+            return false
+        }
+
+        // Line 2 has been prone to broad station alert matches from TTC metadata.
+        // Until we have a station-to-line map, only explicit Line 2/Bloor-Danforth
+        // text should be accepted for this subway line.
+        if savedRouteNumber == "2" {
+            return false
+        }
+
+        if containsStationOnlyAlertWords(alertWords) {
+            return false
+        }
+
+        return true
+    }
+
+    private static func subwayTextExplicitlyMatchesRoute(
+        lowercaseAlert: String,
+        alertWords: [String],
+        route: TTCAlertRoute,
+        savedRouteNumber: String?
+    ) -> Bool {
         if let savedRouteNumber, containsFullTokenPhrase(["line", savedRouteNumber], in: alertWords) {
             return true
         }

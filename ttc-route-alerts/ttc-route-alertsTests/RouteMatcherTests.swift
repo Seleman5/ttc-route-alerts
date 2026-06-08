@@ -173,6 +173,45 @@ final class RouteMatcherTests: XCTestCase {
         XCTAssertTrue(RouteMatcher.matches(alert, route: line5))
     }
 
+    func testSubwayLine2DoesNotMatchMountDennisElevatorAlert() {
+        let line2 = savedRoute(routeType: .subway, routeID: "2", routeNumber: "2", nickname: "Bloor-Danforth")
+        let alert = TTCAlert(
+            text: "Mount Dennis: Elevator out of service between concourse and Line 5 platform.",
+            routeIDs: ["2"]
+        )
+
+        XCTAssertFalse(RouteMatcher.matches(alert, route: line2))
+    }
+
+    func testSubwayLine2DoesNotMatchLine5AlertEvenWithLine2RouteID() {
+        let line2 = savedRoute(routeType: .subway, routeID: "2", routeNumber: "2", nickname: "Bloor-Danforth")
+        let alert = TTCAlert(
+            text: "Line 5 Eglinton: Service is delayed between Mount Dennis and Kennedy.",
+            routeIDs: ["2"]
+        )
+
+        XCTAssertFalse(RouteMatcher.matches(alert, route: line2))
+    }
+
+    func testSubwayLine2MatchesBloorDanforthAlert() {
+        let line2 = savedRoute(routeType: .subway, routeID: "2", routeNumber: "2", nickname: "Bloor-Danforth")
+        let hyphenAlert = TTCAlert(text: "Bloor-Danforth: Service is delayed eastbound.", routeIDs: [])
+        let spaceAlert = TTCAlert(text: "Bloor Danforth: Service is delayed westbound.", routeIDs: [])
+
+        XCTAssertTrue(RouteMatcher.matches(hyphenAlert, route: line2))
+        XCTAssertTrue(RouteMatcher.matches(spaceAlert, route: line2))
+    }
+
+    func testSubwayLine5MatchesMountDennisLine5Alert() {
+        let line5 = savedRoute(routeType: .subway, routeID: "5", routeNumber: "5", nickname: "Eglinton")
+        let alert = TTCAlert(
+            text: "Line 5 Eglinton: Elevator out of service at Mount Dennis Station.",
+            routeIDs: ["5"]
+        )
+
+        XCTAssertTrue(RouteMatcher.matches(alert, route: line5))
+    }
+
     func testBus131MatchesBranchStyleRouteID() {
         let route = savedRoute(routeID: "131_1", routeNumber: "131", nickname: "Nugget")
         let alert = TTCAlert(text: "A service alert exists for this branch.", routeIDs: ["131A"])
