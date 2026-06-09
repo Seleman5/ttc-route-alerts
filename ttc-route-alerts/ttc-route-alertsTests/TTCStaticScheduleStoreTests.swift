@@ -212,10 +212,6 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
         XCTAssertEqual(result.dataSourceMessage, StopDetailArrivalLoader.liveMessage)
         XCTAssertNil(result.fallbackSectionTitle)
         XCTAssertEqual(result.scheduleError, nil)
-        XCTAssertEqual(result.diagnostics.liveFeedFetchedSuccessfully, true)
-        XCTAssertEqual(result.diagnostics.liveUpdateCount, 1)
-        XCTAssertEqual(result.diagnostics.matchingLiveUpdateCount, 1)
-        XCTAssertEqual(result.diagnostics.fallbackUsed, false)
         XCTAssertEqual(scheduledFetchCount, 0)
     }
 
@@ -252,10 +248,6 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
         XCTAssertEqual(result.dataSourceMessage, StopDetailArrivalLoader.noLivePredictionsMessage)
         XCTAssertEqual(result.fallbackSectionTitle, StopDetailArrivalLoader.scheduledFallbackSectionTitle)
         XCTAssertEqual(result.scheduleError, nil)
-        XCTAssertEqual(result.diagnostics.liveFeedFetchedSuccessfully, true)
-        XCTAssertEqual(result.diagnostics.liveUpdateCount, 0)
-        XCTAssertEqual(result.diagnostics.matchingLiveUpdateCount, 0)
-        XCTAssertEqual(result.diagnostics.fallbackUsed, true)
         XCTAssertEqual(scheduledFetchCount, 1)
     }
 
@@ -301,8 +293,6 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
         XCTAssertEqual(result.arrivals, [scheduledArrival])
         XCTAssertEqual(result.dataSource, .scheduled)
         XCTAssertEqual(result.fallbackSectionTitle, StopDetailArrivalLoader.scheduledFallbackSectionTitle)
-        XCTAssertEqual(result.diagnostics.matchingLiveUpdateCount, 0)
-        XCTAssertEqual(result.diagnostics.fallbackUsed, true)
         XCTAssertEqual(sequenceFetchCount, 0)
     }
 
@@ -350,8 +340,6 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
         XCTAssertEqual(result.arrivals[0].source, .live)
         XCTAssertEqual(result.dataSource, .live)
         XCTAssertNil(result.fallbackSectionTitle)
-        XCTAssertEqual(result.diagnostics.matchingLiveUpdateCount, 1)
-        XCTAssertEqual(result.diagnostics.fallbackUsed, false)
         XCTAssertEqual(scheduledFetchCount, 0)
     }
 
@@ -434,9 +422,6 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
         XCTAssertEqual(result.dataSource, .scheduled)
         XCTAssertEqual(result.dataSourceMessage, StopDetailArrivalLoader.noLivePredictionsMessage)
         XCTAssertEqual(result.fallbackSectionTitle, StopDetailArrivalLoader.scheduledFallbackSectionTitle)
-        XCTAssertEqual(result.diagnostics.liveUpdateCount, 1)
-        XCTAssertEqual(result.diagnostics.matchingLiveUpdateCount, 1)
-        XCTAssertEqual(result.diagnostics.fallbackUsed, true)
     }
 
     func testStopDetailArrivalLoaderPrefersBusTimeRowsBeforeGTFSRealtimeAndScheduled() async {
@@ -516,8 +501,6 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
         XCTAssertTrue(result.arrivals.isEmpty)
         XCTAssertNil(result.dataSource)
         XCTAssertEqual(result.scheduleError, .missingFile("stop_times.txt"))
-        XCTAssertEqual(result.diagnostics.matchingLiveUpdateCount, 1)
-        XCTAssertEqual(result.diagnostics.fallbackUsed, true)
     }
 
     private func stopArrival(id: String, source: StopArrivalSource) -> StopArrival {

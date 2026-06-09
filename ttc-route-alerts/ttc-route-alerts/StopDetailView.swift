@@ -11,25 +11,6 @@ struct StopDetailArrivalLoadResult: Equatable {
     let dataSourceMessage: String?
     let fallbackSectionTitle: String?
     let scheduleError: TTCStaticScheduleError?
-    let diagnostics: StopDetailArrivalDiagnostics
-}
-
-struct StopDetailArrivalDiagnostics: Equatable {
-    let liveFeedFetchedSuccessfully: Bool
-    let liveFeedErrorDescription: String?
-    let liveUpdateCount: Int
-    let matchingLiveUpdateCount: Int
-    let scheduledFallbackRowCount: Int
-    let fallbackUsed: Bool
-
-    static let empty = StopDetailArrivalDiagnostics(
-        liveFeedFetchedSuccessfully: false,
-        liveFeedErrorDescription: nil,
-        liveUpdateCount: 0,
-        matchingLiveUpdateCount: 0,
-        scheduledFallbackRowCount: 0,
-        fallbackUsed: false
-    )
 }
 
 struct StopDetailArrivalLoader {
@@ -89,8 +70,6 @@ struct StopDetailArrivalLoader {
         now: Date = Date(),
         limit: Int = 10
     ) async -> StopDetailArrivalLoadResult {
-        var diagnostics = StopDetailArrivalDiagnostics.empty
-
         do {
             let busTimeArrivals = try await fetchBusTimePredictions(
                 matchingStopIDs,
@@ -105,19 +84,10 @@ struct StopDetailArrivalLoader {
                     dataSource: .live,
                     dataSourceMessage: Self.liveMessage,
                     fallbackSectionTitle: nil,
-                    scheduleError: nil,
-                    diagnostics: diagnostics
+                    scheduleError: nil
                 )
             }
         } catch {
-            diagnostics = StopDetailArrivalDiagnostics(
-                liveFeedFetchedSuccessfully: false,
-                liveFeedErrorDescription: error.localizedDescription,
-                liveUpdateCount: 0,
-                matchingLiveUpdateCount: 0,
-                scheduledFallbackRowCount: 0,
-                fallbackUsed: false
-            )
         }
 
         async let servedRouteIDsResult = fetchServedRouteIDs(stopID)
@@ -129,14 +99,6 @@ struct StopDetailArrivalLoader {
                 from: liveUpdates,
                 stopID: stopID,
                 alternateStopIDs: matchingStopIDs.filter { $0 != stopID }
-            )
-            diagnostics = StopDetailArrivalDiagnostics(
-                liveFeedFetchedSuccessfully: true,
-                liveFeedErrorDescription: diagnostics.liveFeedErrorDescription,
-                liveUpdateCount: liveUpdates.count,
-                matchingLiveUpdateCount: matchingLiveUpdates.count,
-                scheduledFallbackRowCount: 0,
-                fallbackUsed: false
             )
             let liveArrivals = TTCTripUpdatesService.stopArrivals(
                 from: matchingLiveUpdates,
@@ -155,8 +117,7 @@ struct StopDetailArrivalLoader {
                     dataSource: .live,
                     dataSourceMessage: Self.liveMessage,
                     fallbackSectionTitle: nil,
-                    scheduleError: nil,
-                    diagnostics: diagnostics
+                    scheduleError: nil
                 )
             }
 
@@ -176,34 +137,16 @@ struct StopDetailArrivalLoader {
                 )
 
                 if !sequenceMatchedLiveArrivals.isEmpty {
-                    diagnostics = StopDetailArrivalDiagnostics(
-                        liveFeedFetchedSuccessfully: true,
-                        liveFeedErrorDescription: nil,
-                        liveUpdateCount: liveUpdates.count,
-                        matchingLiveUpdateCount: max(matchingLiveUpdates.count, sequenceMatchedLiveArrivals.count),
-                        scheduledFallbackRowCount: 0,
-                        fallbackUsed: false
-                    )
-
                     return StopDetailArrivalLoadResult(
                         arrivals: sequenceMatchedLiveArrivals,
                         dataSource: .live,
                         dataSourceMessage: Self.liveMessage,
                         fallbackSectionTitle: nil,
-                        scheduleError: nil,
-                        diagnostics: diagnostics
+                        scheduleError: nil
                     )
                 }
             }
         } catch {
-            diagnostics = StopDetailArrivalDiagnostics(
-                liveFeedFetchedSuccessfully: false,
-                liveFeedErrorDescription: error.localizedDescription,
-                liveUpdateCount: 0,
-                matchingLiveUpdateCount: 0,
-                scheduledFallbackRowCount: 0,
-                fallbackUsed: true
-            )
             // If live TTC predictions cannot be loaded, the stop detail screen falls back to static GTFS.
             _ = await servedRouteIDsResult
         }
@@ -217,15 +160,7 @@ struct StopDetailArrivalLoader {
                 dataSource: .scheduled,
                 dataSourceMessage: Self.noLivePredictionsMessage,
                 fallbackSectionTitle: scheduledArrivals.isEmpty ? nil : Self.scheduledFallbackSectionTitle,
-                scheduleError: nil,
-                diagnostics: StopDetailArrivalDiagnostics(
-                    liveFeedFetchedSuccessfully: diagnostics.liveFeedFetchedSuccessfully,
-                    liveFeedErrorDescription: diagnostics.liveFeedErrorDescription,
-                    liveUpdateCount: diagnostics.liveUpdateCount,
-                    matchingLiveUpdateCount: diagnostics.matchingLiveUpdateCount,
-                    scheduledFallbackRowCount: scheduledArrivals.count,
-                    fallbackUsed: true
-                )
+                scheduleError: nil
             )
         case .failure(let scheduleError):
             return StopDetailArrivalLoadResult(
@@ -233,15 +168,7 @@ struct StopDetailArrivalLoader {
                 dataSource: nil,
                 dataSourceMessage: nil,
                 fallbackSectionTitle: nil,
-                scheduleError: scheduleError,
-                diagnostics: StopDetailArrivalDiagnostics(
-                    liveFeedFetchedSuccessfully: diagnostics.liveFeedFetchedSuccessfully,
-                    liveFeedErrorDescription: diagnostics.liveFeedErrorDescription,
-                    liveUpdateCount: diagnostics.liveUpdateCount,
-                    matchingLiveUpdateCount: diagnostics.matchingLiveUpdateCount,
-                    scheduledFallbackRowCount: 0,
-                    fallbackUsed: true
-                )
+                scheduleError: scheduleError
             )
         }
     }
