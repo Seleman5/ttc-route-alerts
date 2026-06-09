@@ -14,9 +14,9 @@ enum SavedRouteArrivalState: Equatable {
     var displayText: String {
         switch self {
         case .loading:
-            return "Checking live arrivals..."
+            return "Checking arrivals..."
         case .unavailable:
-            return "No nearby live arrival"
+            return "Arrival unavailable"
         case .arrival(let minutes):
             if minutes == 1 {
                 return "Next arrival: 1 min"
@@ -31,7 +31,7 @@ enum SavedRouteArrivalState: Equatable {
         case .loading:
             return "Checking live arrivals"
         case .unavailable:
-            return "No nearby live arrival"
+            return "Arrival unavailable"
         case .arrival(let minutes):
             return "Next live arrival in \(minutes) minutes"
         }
@@ -44,34 +44,37 @@ struct SavedRouteArrivalCacheEntry {
 }
 
 struct SavedRouteArrivalService {
-    var fetchPredictions: ([String]) async throws -> [TTCBusTimePrediction]
-    var fetchRouteIDsServingStop: (String) async -> Result<Set<String>, TTCStaticScheduleError>
+    var fetchPredictions: ([String], TimeInterval) async throws -> [TTCBusTimePrediction]
     var nearbyStopLimit: Int
+    var lookupTimeout: TimeInterval
 
     init(
-        fetchPredictions: @escaping ([String]) async throws -> [TTCBusTimePrediction] = { stopIDs in
-            try await TTCBusTimePredictionService().fetchPredictionRows(for: stopIDs)
+        fetchPredictions: @escaping ([String], TimeInterval) async throws -> [TTCBusTimePrediction] = { stopIDs, timeout in
+            try await TTCBusTimePredictionService().fetchPredictionRows(
+                for: stopIDs,
+                requestTimeout: timeout
+            )
         },
-        fetchRouteIDsServingStop: @escaping (String) async -> Result<Set<String>, TTCStaticScheduleError> = { stopID in
-            await Task.detached {
-                TTCStaticScheduleStore.routeIDsServingStop(for: stopID)
-            }.value
-        },
-        nearbyStopLimit: Int = 12
+        nearbyStopLimit: Int = 4,
+        lookupTimeout: TimeInterval = 2.5
     ) {
         self.fetchPredictions = fetchPredictions
-        self.fetchRouteIDsServingStop = fetchRouteIDsServingStop
         self.nearbyStopLimit = nearbyStopLimit
+        self.lookupTimeout = lookupTimeout
     }
 
-    func nextArrivalState(
-        for route: TTCAlertRoute,
+    func nextArrivalStates(
+        for routes: [TTCAlertRoute],
         currentLocation: CLLocation,
         stops: [TTCStop],
         now: Date = Date()
-    ) async -> SavedRouteArrivalState {
-        guard route.supportsSavedRouteLiveArrival else {
-            return .unavailable
+    ) async -> [UUID: SavedRouteArrivalState] {
+        let eligibleRoutes = routes.filter { route in
+            route.supportsSavedRouteLiveArrival
+        }
+
+        guard !eligibleRoutes.isEmpty else {
+            return [:]
         }
 
         let nearbyStops = TTCStopsStore.closestStops(
@@ -81,77 +84,112 @@ struct SavedRouteArrivalService {
         )
 
         guard !nearbyStops.isEmpty else {
-            return .unavailable
+            return unavailableStates(for: eligibleRoutes)
         }
 
-        let candidateStops = await stopsServedByRoute(route, nearbyStops: nearbyStops)
+        let predictionsByStopID = await livePredictionsByStopID(for: nearbyStops)
+        var states: [UUID: SavedRouteArrivalState] = [:]
 
-        if candidateStops.hasStaticValidation, candidateStops.stops.isEmpty {
-            return .unavailable
-        }
-
-        let stopsToCheck = candidateStops.hasStaticValidation ? candidateStops.stops : nearbyStops
-
-        for nearbyStop in stopsToCheck {
-            guard let nextPrediction = await nextPrediction(
+        for route in eligibleRoutes {
+            states[route.id] = nextArrivalState(
                 for: route,
-                at: nearbyStop.stop,
+                nearbyStops: nearbyStops,
+                predictionsByStopID: predictionsByStopID,
                 now: now
-            ) else {
-                continue
+            )
+        }
+
+        return states
+    }
+
+    private func livePredictionsByStopID(
+        for nearbyStops: [NearbyStop]
+    ) async -> [String: [TTCBusTimePrediction]] {
+        await withTaskGroup(of: (String, [TTCBusTimePrediction]).self) { group in
+            for nearbyStop in nearbyStops {
+                let stop = nearbyStop.stop
+                let stopIDs = stop.matchingStopIDs
+                let timeout = lookupTimeout
+                let fetchPredictions = fetchPredictions
+
+                group.addTask {
+                    let predictions = await Self.predictionsWithTimeout(
+                        stopIDs: stopIDs,
+                        timeout: timeout,
+                        fetchPredictions: fetchPredictions
+                    )
+
+                    return (stop.stopID, predictions)
+                }
             }
 
-            return .arrival(minutes: minutesUntilArrival(nextPrediction.arrivalDate, now: now))
+            var predictionsByStopID: [String: [TTCBusTimePrediction]] = [:]
+
+            for await (stopID, predictions) in group {
+                predictionsByStopID[stopID] = predictions
+            }
+
+            return predictionsByStopID
+        }
+    }
+
+    private func nextArrivalState(
+        for route: TTCAlertRoute,
+        nearbyStops: [NearbyStop],
+        predictionsByStopID: [String: [TTCBusTimePrediction]],
+        now: Date
+    ) -> SavedRouteArrivalState {
+        for nearbyStop in nearbyStops {
+            let matchingPrediction = (predictionsByStopID[nearbyStop.stop.stopID] ?? [])
+                .filter { prediction in
+                    prediction.arrivalDate >= now && Self.prediction(prediction, matches: route)
+                }
+                .sorted { firstPrediction, secondPrediction in
+                    firstPrediction.arrivalDate < secondPrediction.arrivalDate
+                }
+                .first
+
+            if let matchingPrediction {
+                return .arrival(minutes: minutesUntilArrival(matchingPrediction.arrivalDate, now: now))
+            }
         }
 
         return .unavailable
     }
 
-    private func stopsServedByRoute(
-        _ route: TTCAlertRoute,
-        nearbyStops: [NearbyStop]
-    ) async -> (stops: [NearbyStop], hasStaticValidation: Bool) {
-        var validatedStops: [NearbyStop] = []
-        var hasStaticValidation = false
-
-        for nearbyStop in nearbyStops {
-            let result = await fetchRouteIDsServingStop(nearbyStop.stop.stopID)
-
-            guard case .success(let routeIDs) = result else {
-                continue
-            }
-
-            hasStaticValidation = true
-
-            if routeIDs.contains(where: { routeID in Self.routeID(routeID, matches: route) }) {
-                validatedStops.append(nearbyStop)
-            }
-        }
-
-        return (validatedStops, hasStaticValidation)
-    }
-
-    private func nextPrediction(
-        for route: TTCAlertRoute,
-        at stop: TTCStop,
-        now: Date
-    ) async -> TTCBusTimePrediction? {
-        guard let predictions = try? await fetchPredictions(stop.matchingStopIDs) else {
-            return nil
-        }
-
-        return predictions
-            .filter { prediction in
-                prediction.arrivalDate >= now && Self.prediction(prediction, matches: route)
-            }
-            .sorted { firstPrediction, secondPrediction in
-                firstPrediction.arrivalDate < secondPrediction.arrivalDate
-            }
-            .first
+    private func unavailableStates(for routes: [TTCAlertRoute]) -> [UUID: SavedRouteArrivalState] {
+        Dictionary(uniqueKeysWithValues: routes.map { route in
+            (route.id, SavedRouteArrivalState.unavailable)
+        })
     }
 
     private func minutesUntilArrival(_ arrivalDate: Date, now: Date) -> Int {
         max(0, Int((arrivalDate.timeIntervalSince(now) / 60).rounded()))
+    }
+
+    static func predictionsWithTimeout(
+        stopIDs: [String],
+        timeout: TimeInterval,
+        fetchPredictions: @escaping ([String], TimeInterval) async throws -> [TTCBusTimePrediction]
+    ) async -> [TTCBusTimePrediction] {
+        do {
+            return try await withThrowingTaskGroup(of: [TTCBusTimePrediction].self) { group in
+                group.addTask {
+                    try await fetchPredictions(stopIDs, timeout)
+                }
+
+                group.addTask {
+                    try await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+                    throw URLError(.timedOut)
+                }
+
+                let predictions = try await group.next() ?? []
+                group.cancelAll()
+                return predictions
+            }
+        } catch {
+            return []
+        }
     }
 
     static func prediction(_ prediction: TTCBusTimePrediction, matches route: TTCAlertRoute) -> Bool {

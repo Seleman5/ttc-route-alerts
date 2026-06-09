@@ -18,99 +18,147 @@ final class SavedRouteArrivalServiceTests: XCTestCase {
         )
         var predictionFetchCount = 0
         let service = SavedRouteArrivalService(
-            fetchPredictions: { _ in
+            fetchPredictions: { _, _ in
                 predictionFetchCount += 1
                 return []
-            },
-            fetchRouteIDsServingStop: { _ in
-                .success(["1"])
             }
         )
 
-        let state = await service.nextArrivalState(
-            for: route,
+        let states = await service.nextArrivalStates(
+            for: [route],
             currentLocation: userLocation,
             stops: [stop(id: "stop-1", latitudeOffset: 0.001)]
         )
 
-        XCTAssertEqual(state, .unavailable)
+        XCTAssertTrue(states.isEmpty)
         XCTAssertEqual(predictionFetchCount, 0)
     }
 
-    func testUsesNearestStaticStopServedBySavedRoute() async {
+    func testFetchesPredictionsOncePerNearbyStopForMultipleRoutes() async {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
-        let route = busRoute(number: "100")
+        let route100 = busRoute(number: "100")
+        let route32 = busRoute(number: "32")
         var fetchedStopIDs: [[String]] = []
         let service = SavedRouteArrivalService(
-            fetchPredictions: { stopIDs in
+            fetchPredictions: { stopIDs, _ in
                 fetchedStopIDs.append(stopIDs)
                 return [
-                    self.prediction(routeTag: "100", arrivalDate: Date(timeIntervalSince1970: 1_800_000_360))
+                    self.prediction(routeTag: "100", arrivalDate: Date(timeIntervalSince1970: 1_800_000_360)),
+                    self.prediction(routeTag: "32", arrivalDate: Date(timeIntervalSince1970: 1_800_000_540))
                 ]
             },
-            fetchRouteIDsServingStop: { stopID in
-                stopID == "served-stop" ? .success(["route-100"]) : .success(["route-504"])
-            }
+            nearbyStopLimit: 1
         )
 
-        let state = await service.nextArrivalState(
-            for: route,
+        let states = await service.nextArrivalStates(
+            for: [route100, route32],
+            currentLocation: userLocation,
+            stops: [stop(id: "near-stop", stopCode: "near-code", latitudeOffset: 0.001)],
+            now: now
+        )
+
+        XCTAssertEqual(states[route100.id], .arrival(minutes: 6))
+        XCTAssertEqual(states[route32.id], .arrival(minutes: 9))
+        XCTAssertEqual(fetchedStopIDs, [["near-stop", "near-code"]])
+    }
+
+    func testUsesNearestStopWithMatchingPrediction() async {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let route = busRoute(number: "100")
+        let service = SavedRouteArrivalService(
+            fetchPredictions: { stopIDs, _ in
+                if stopIDs.contains("nearest-stop") {
+                    return [
+                        self.prediction(routeTag: "32", arrivalDate: Date(timeIntervalSince1970: 1_800_000_120))
+                    ]
+                }
+
+                return [
+                    self.prediction(routeTag: "100", arrivalDate: Date(timeIntervalSince1970: 1_800_000_420))
+                ]
+            },
+            nearbyStopLimit: 2
+        )
+
+        let states = await service.nextArrivalStates(
+            for: [route],
             currentLocation: userLocation,
             stops: [
-                stop(id: "other-stop", latitudeOffset: 0.001),
-                stop(id: "served-stop", stopCode: "served-code", latitudeOffset: 0.002)
+                stop(id: "nearest-stop", latitudeOffset: 0.001),
+                stop(id: "matching-stop", latitudeOffset: 0.002)
             ],
             now: now
         )
 
-        XCTAssertEqual(state, .arrival(minutes: 6))
-        XCTAssertEqual(fetchedStopIDs, [["served-stop", "served-code"]])
+        XCTAssertEqual(states[route.id], .arrival(minutes: 7))
     }
 
-    func testFallsBackToBusTimeMatchingWhenStaticValidationIsUnavailable() async {
-        let now = Date(timeIntervalSince1970: 1_800_000_000)
+    func testLimitsNearbyStopWork() async {
+        let route = busRoute(number: "100")
+        var fetchedStopIDs: Set<String> = []
         let service = SavedRouteArrivalService(
-            fetchPredictions: { _ in
-                [
+            fetchPredictions: { stopIDs, _ in
+                fetchedStopIDs.insert(stopIDs[0])
+                return []
+            },
+            nearbyStopLimit: 2
+        )
+
+        _ = await service.nextArrivalStates(
+            for: [route],
+            currentLocation: userLocation,
+            stops: [
+                stop(id: "first", latitudeOffset: 0.001),
+                stop(id: "second", latitudeOffset: 0.002),
+                stop(id: "third", latitudeOffset: 0.003)
+            ]
+        )
+
+        XCTAssertEqual(fetchedStopIDs, ["first", "second"])
+    }
+
+    func testTimeoutReturnsArrivalUnavailable() async {
+        let route = busRoute(number: "100")
+        let service = SavedRouteArrivalService(
+            fetchPredictions: { _, _ in
+                try await Task.sleep(nanoseconds: 200_000_000)
+                return [
                     self.prediction(routeTag: "100", arrivalDate: Date(timeIntervalSince1970: 1_800_000_420))
                 ]
             },
-            fetchRouteIDsServingStop: { _ in
-                .failure(.missingFile("stop_times.txt"))
-            }
+            nearbyStopLimit: 1,
+            lookupTimeout: 0.01
         )
 
-        let state = await service.nextArrivalState(
-            for: busRoute(number: "100"),
+        let states = await service.nextArrivalStates(
+            for: [route],
             currentLocation: userLocation,
             stops: [stop(id: "near-stop", latitudeOffset: 0.001)],
-            now: now
+            now: Date(timeIntervalSince1970: 1_800_000_000)
         )
 
-        XCTAssertEqual(state, .arrival(minutes: 7))
+        XCTAssertEqual(states[route.id], .unavailable)
     }
 
     func testReturnsUnavailableWhenBusTimePredictionDoesNotMatchSavedRoute() async {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let route = busRoute(number: "100")
         let service = SavedRouteArrivalService(
-            fetchPredictions: { _ in
+            fetchPredictions: { _, _ in
                 [
                     self.prediction(routeTag: "504", arrivalDate: Date(timeIntervalSince1970: 1_800_000_420))
                 ]
-            },
-            fetchRouteIDsServingStop: { _ in
-                .failure(.missingFile("stop_times.txt"))
             }
         )
 
-        let state = await service.nextArrivalState(
-            for: busRoute(number: "100"),
+        let states = await service.nextArrivalStates(
+            for: [route],
             currentLocation: userLocation,
             stops: [stop(id: "near-stop", latitudeOffset: 0.001)],
             now: now
         )
 
-        XCTAssertEqual(state, .unavailable)
+        XCTAssertEqual(states[route.id], .unavailable)
     }
 
     private var userLocation: CLLocation {
@@ -123,7 +171,7 @@ final class SavedRouteArrivalServiceTests: XCTestCase {
             status: "Checking status...",
             routeType: .bus,
             routeNumber: number,
-            nickname: "Flemingdon Park"
+            nickname: "Test Route"
         )
     }
 

@@ -38,12 +38,18 @@ struct TTCBusTimePredictionService {
         )
     }
 
-    func fetchPredictionRows(for stopIDs: [String]) async throws -> [TTCBusTimePrediction] {
+    func fetchPredictionRows(
+        for stopIDs: [String],
+        requestTimeout: TimeInterval = 12
+    ) async throws -> [TTCBusTimePrediction] {
         var lastError: Error?
 
         for stopID in uniqueStopIDs(from: stopIDs) {
             do {
-                let predictions = try await fetchPredictionRows(for: stopID)
+                let predictions = try await fetchPredictionRows(
+                    for: stopID,
+                    requestTimeout: requestTimeout
+                )
 
                 if !predictions.isEmpty {
                     return predictions
@@ -60,7 +66,10 @@ struct TTCBusTimePredictionService {
         return []
     }
 
-    func fetchPredictionRows(for stopID: String) async throws -> [TTCBusTimePrediction] {
+    func fetchPredictionRows(
+        for stopID: String,
+        requestTimeout: TimeInterval = 12
+    ) async throws -> [TTCBusTimePrediction] {
         var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false)
         components?.queryItems = [
             URLQueryItem(name: "command", value: "predictions"),
@@ -74,7 +83,7 @@ struct TTCBusTimePredictionService {
 
         var request = URLRequest(url: url)
         request.cachePolicy = .reloadIgnoringLocalCacheData
-        request.timeoutInterval = 12
+        request.timeoutInterval = requestTimeout
 
         let (data, response) = try await URLSession.shared.data(for: request)
 

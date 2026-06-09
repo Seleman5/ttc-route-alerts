@@ -8,6 +8,7 @@ import SwiftUI
 struct SettingsView: View {
     @AppStorage("notificationsEnabled") private var notificationsEnabled = false
     @AppStorage(RefreshPreference.storageKey) private var refreshPreference = RefreshPreference.manualOnly.rawValue
+    @AppStorage(SavedRouteArrivalPreviewPreference.storageKey) private var savedRouteArrivalPreviewEnabled = true
     @State private var notificationMessage: String?
     @State private var isRevertingNotificationsToggle = false
 
@@ -23,6 +24,7 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     notificationsSection
                     refreshSection
+                    arrivalsSection
                     appStatusSection
                     aboutSection
                 }
@@ -102,12 +104,37 @@ struct SettingsView: View {
         .settingsCardStyle()
     }
 
+    var arrivalsSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HomeSectionHeaderView(title: "Arrivals", systemImage: "clock.fill", tint: ttcRed)
+
+            Toggle(isOn: $savedRouteArrivalPreviewEnabled) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Saved route arrival preview")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+
+                    Text("Show a quick live arrival estimate on bus and streetcar route cards.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Text("Stop detail screens still show full live arrivals even when this preview is off.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .settingsCardStyle()
+    }
+
     var appStatusSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HomeSectionHeaderView(title: "App Status", systemImage: "checklist", tint: ttcRed)
 
             SettingsInfoRow(title: "Notifications", value: notificationsEnabled ? "On" : "Off")
             SettingsInfoRow(title: "Refresh", value: refreshPreference)
+            SettingsInfoRow(title: "Route arrivals", value: savedRouteArrivalPreviewEnabled ? "On" : "Off")
 
             Text("Manual refresh and pull-to-refresh are always available from the route list.")
                 .font(.caption)
@@ -167,6 +194,10 @@ struct SettingsView: View {
             notificationMessage = "Notifications are off."
         }
     }
+}
+
+enum SavedRouteArrivalPreviewPreference {
+    static let storageKey = "savedRouteArrivalPreviewEnabled"
 }
 
 enum RefreshPreference: String, CaseIterable, Identifiable {

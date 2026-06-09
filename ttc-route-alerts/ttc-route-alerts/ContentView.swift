@@ -20,6 +20,7 @@ struct ContentView: View {
 
     @AppStorage("notificationsEnabled") private var notificationsEnabled = false
     @AppStorage(RefreshPreference.storageKey) private var refreshPreference = RefreshPreference.manualOnly.rawValue
+    @AppStorage(SavedRouteArrivalPreviewPreference.storageKey) private var savedRouteArrivalPreviewEnabled = true
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var locationManager = NearbyLocationManager()
     @State private var selectedMainScreen = MainScreen.alerts
@@ -54,7 +55,7 @@ struct ContentView: View {
     let ttcRed = AppDesign.ttcRed
     let appBackground = AppDesign.appBackground
     let savedRouteArrivalService = SavedRouteArrivalService()
-    let routeArrivalCacheDuration: TimeInterval = 60
+    let routeArrivalCacheDuration: TimeInterval = 45
 
     var body: some View {
         NavigationStack {
@@ -126,6 +127,15 @@ struct ContentView: View {
         .onChange(of: refreshPreference) { _, _ in
             startAutoRefreshIfNeeded()
             BackgroundAlertRefreshManager.scheduleBackgroundRefresh()
+        }
+        .onChange(of: savedRouteArrivalPreviewEnabled) { _, isEnabled in
+            if isEnabled {
+                refreshSavedRouteArrivalsIfPossible(force: true)
+            } else {
+                routeArrivalTask?.cancel()
+                routeArrivalStates = [:]
+                routeArrivalCache = [:]
+            }
         }
         .onChange(of: routeNumberInput) { _, _ in
             updateFilteredSuggestedRoutes()
@@ -640,7 +650,8 @@ struct ContentView: View {
     }
 
     func routeArrivalState(for route: TTCAlertRoute) -> SavedRouteArrivalState? {
-        guard supportsSavedRouteLiveArrival(route) else {
+        guard savedRouteArrivalPreviewEnabled,
+              supportsSavedRouteLiveArrival(route) else {
             return nil
         }
 
@@ -648,11 +659,12 @@ struct ContentView: View {
             return routeArrivalState
         }
 
-        return locationManager.isAuthorized ? .loading : .unavailable
+        return .unavailable
     }
 
     func requestSavedRouteLocationIfNeeded() {
-        guard selectedMainScreen == .alerts,
+        guard savedRouteArrivalPreviewEnabled,
+              selectedMainScreen == .alerts,
               locationManager.isAuthorized else {
             return
         }
@@ -661,6 +673,13 @@ struct ContentView: View {
     }
 
     func refreshSavedRouteArrivalsIfPossible(force: Bool = false) {
+        guard savedRouteArrivalPreviewEnabled else {
+            routeArrivalTask?.cancel()
+            routeArrivalStates = [:]
+            routeArrivalCache = [:]
+            return
+        }
+
         let eligibleRoutes = savedRoutes.filter(supportsSavedRouteLiveArrival)
         let eligibleRouteIDs = Set(eligibleRoutes.map(\.id))
 
@@ -710,23 +729,20 @@ struct ContentView: View {
         let arrivalService = savedRouteArrivalService
 
         routeArrivalTask = Task {
-            for route in routesToLoad {
-                if Task.isCancelled {
-                    return
-                }
+            let arrivalStates = await arrivalService.nextArrivalStates(
+                for: routesToLoad,
+                currentLocation: currentLocation,
+                stops: stops,
+                now: now
+            )
 
-                let arrivalState = await arrivalService.nextArrivalState(
-                    for: route,
-                    currentLocation: currentLocation,
-                    stops: stops,
-                    now: now
-                )
+            if Task.isCancelled {
+                return
+            }
 
-                if Task.isCancelled {
-                    return
-                }
-
-                await MainActor.run {
+            await MainActor.run {
+                for route in routesToLoad {
+                    let arrivalState = arrivalStates[route.id] ?? .unavailable
                     routeArrivalStates[route.id] = arrivalState
                     routeArrivalCache[route.id] = SavedRouteArrivalCacheEntry(
                         state: arrivalState,
