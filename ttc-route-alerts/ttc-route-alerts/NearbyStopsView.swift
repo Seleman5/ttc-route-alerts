@@ -8,7 +8,7 @@ import SwiftUI
 import UIKit
 
 struct NearbyStopsView: View {
-    @StateObject private var locationManager = NearbyLocationManager()
+    @ObservedObject var locationManager: NearbyLocationManager
 
     let ttcRed: Color
 

@@ -5,6 +5,7 @@
 //  Created by Seleman Shinwarie on 2026-05-19.
 //
 
+import CoreLocation
 import SwiftUI
 
 struct ContentView: View {
@@ -20,6 +21,7 @@ struct ContentView: View {
     @AppStorage("notificationsEnabled") private var notificationsEnabled = false
     @AppStorage(RefreshPreference.storageKey) private var refreshPreference = RefreshPreference.manualOnly.rawValue
     @Environment(\.scenePhase) private var scenePhase
+    @StateObject private var locationManager = NearbyLocationManager()
     @State private var selectedMainScreen = MainScreen.alerts
     @State private var selectedRouteType = RouteType.subway
     @State private var routeNumberInput = ""
@@ -35,8 +37,11 @@ struct ContentView: View {
     @State private var filteredSuggestedRoutesCache: [SuggestedRoute] = []
     @State private var routeAlertMatches: [UUID: [TTCAlert]] = [:]
     @State private var routeSeverities: [UUID: AlertSeverity] = [:]
+    @State private var routeArrivalStates: [UUID: SavedRouteArrivalState] = [:]
+    @State private var routeArrivalCache: [UUID: SavedRouteArrivalCacheEntry] = [:]
     @State private var autoRefreshTask: Task<Void, Never>?
-    @ScaledMetric private var routeRowHeight = 120
+    @State private var routeArrivalTask: Task<Void, Never>?
+    @ScaledMetric private var routeRowHeight = 138
 
     static let savedRoutesKey = "savedRoutes"
     static let cachedAlertsKey = "cachedTTCAlerts"
@@ -48,6 +53,8 @@ struct ContentView: View {
 
     let ttcRed = AppDesign.ttcRed
     let appBackground = AppDesign.appBackground
+    let savedRouteArrivalService = SavedRouteArrivalService()
+    let routeArrivalCacheDuration: TimeInterval = 60
 
     var body: some View {
         NavigationStack {
@@ -109,9 +116,12 @@ struct ContentView: View {
             updateFilteredSuggestedRoutes()
             rebuildRouteAlertCache()
             startAutoRefreshIfNeeded()
+            requestSavedRouteLocationIfNeeded()
+            refreshSavedRouteArrivalsIfPossible()
         }
         .onDisappear {
             stopAutoRefresh()
+            routeArrivalTask?.cancel()
         }
         .onChange(of: refreshPreference) { _, _ in
             startAutoRefreshIfNeeded()
@@ -126,8 +136,21 @@ struct ContentView: View {
         .onChange(of: scenePhase) { _, newScenePhase in
             if newScenePhase == .active {
                 startAutoRefreshIfNeeded()
+                requestSavedRouteLocationIfNeeded()
+                refreshSavedRouteArrivalsIfPossible()
             } else {
                 stopAutoRefresh()
+            }
+        }
+        .onChange(of: selectedMainScreen) { _, newScreen in
+            if newScreen == .alerts {
+                requestSavedRouteLocationIfNeeded()
+                refreshSavedRouteArrivalsIfPossible()
+            }
+        }
+        .onReceive(locationManager.$currentLocation) { currentLocation in
+            if currentLocation != nil {
+                refreshSavedRouteArrivalsIfPossible(force: true)
             }
         }
     }
@@ -158,7 +181,7 @@ struct ContentView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: AppDesign.sectionSpacing) {
                 screenToggle
-                NearbyStopsView(ttcRed: ttcRed)
+                NearbyStopsView(locationManager: locationManager, ttcRed: ttcRed)
             }
             .padding(.horizontal, AppDesign.screenHorizontalPadding)
             .padding(.top, 12)
@@ -316,7 +339,11 @@ struct ContentView: View {
                         NavigationLink {
                             RouteDetailView(route: route, severity: routeSeverity(for: route), alerts: matchingAlerts(for: route), lastUpdatedText: lastUpdatedText, ttcRed: ttcRed, appBackground: appBackground)
                         } label: {
-                            RouteCardView(route: route, severity: routeSeverity(for: route))
+                            RouteCardView(
+                                route: route,
+                                severity: routeSeverity(for: route),
+                                arrivalState: routeArrivalState(for: route)
+                            )
                         }
                         .buttonStyle(.plain)
                             .accessibilityHint("Opens details for \(route.displayName).")
@@ -426,6 +453,7 @@ struct ContentView: View {
         }
         saveRoutes()
         rebuildRouteAlertCache()
+        refreshSavedRouteArrivalsIfPossible(force: true)
         routeFormErrorMessage = nil
         clearRouteForm()
     }
@@ -460,6 +488,7 @@ struct ContentView: View {
         }
         saveRoutes()
         rebuildRouteAlertCache()
+        refreshSavedRouteArrivalsIfPossible(force: true)
         routeFormErrorMessage = nil
         clearRouteForm()
     }
@@ -493,6 +522,7 @@ struct ContentView: View {
         saveRoutes()
         rebuildRouteAlertCache()
         updateFilteredSuggestedRoutes()
+        refreshSavedRouteArrivalsIfPossible(force: true)
 
         if let editingRouteID, deletedRouteIDs.contains(editingRouteID) {
             clearRouteForm()
@@ -508,6 +538,7 @@ struct ContentView: View {
         saveRoutes()
         rebuildRouteAlertCache()
         updateFilteredSuggestedRoutes()
+        refreshSavedRouteArrivalsIfPossible(force: true)
 
         if editingRouteID == route.id {
             clearRouteForm()
@@ -606,6 +637,108 @@ struct ContentView: View {
 
         let alerts = matchingAlerts(for: route)
         return AlertSeverity.strongestSeverity(in: alerts.map(\.text))
+    }
+
+    func routeArrivalState(for route: TTCAlertRoute) -> SavedRouteArrivalState? {
+        guard supportsSavedRouteLiveArrival(route) else {
+            return nil
+        }
+
+        if let routeArrivalState = routeArrivalStates[route.id] {
+            return routeArrivalState
+        }
+
+        return locationManager.isAuthorized ? .loading : .unavailable
+    }
+
+    func requestSavedRouteLocationIfNeeded() {
+        guard selectedMainScreen == .alerts,
+              locationManager.isAuthorized else {
+            return
+        }
+
+        locationManager.requestCurrentLocation()
+    }
+
+    func refreshSavedRouteArrivalsIfPossible(force: Bool = false) {
+        let eligibleRoutes = savedRoutes.filter(supportsSavedRouteLiveArrival)
+        let eligibleRouteIDs = Set(eligibleRoutes.map(\.id))
+
+        routeArrivalStates = routeArrivalStates.filter { routeID, _ in
+            eligibleRouteIDs.contains(routeID)
+        }
+        routeArrivalCache = routeArrivalCache.filter { routeID, _ in
+            eligibleRouteIDs.contains(routeID)
+        }
+
+        guard !eligibleRoutes.isEmpty else {
+            routeArrivalTask?.cancel()
+            return
+        }
+
+        guard selectedMainScreen == .alerts,
+              let currentLocation = locationManager.currentLocation else {
+            if !locationManager.isAuthorized {
+                for route in eligibleRoutes {
+                    routeArrivalStates[route.id] = .unavailable
+                }
+            }
+            return
+        }
+
+        let now = Date()
+        var routesToLoad: [TTCAlertRoute] = []
+
+        for route in eligibleRoutes {
+            if !force,
+               let cachedArrival = routeArrivalCache[route.id],
+               now.timeIntervalSince(cachedArrival.updatedAt) < routeArrivalCacheDuration {
+                routeArrivalStates[route.id] = cachedArrival.state
+            } else {
+                routeArrivalStates[route.id] = .loading
+                routesToLoad.append(route)
+            }
+        }
+
+        guard !routesToLoad.isEmpty else {
+            return
+        }
+
+        routeArrivalTask?.cancel()
+
+        let stops = TTCStopsStore.bundledStops
+        let arrivalService = savedRouteArrivalService
+
+        routeArrivalTask = Task {
+            for route in routesToLoad {
+                if Task.isCancelled {
+                    return
+                }
+
+                let arrivalState = await arrivalService.nextArrivalState(
+                    for: route,
+                    currentLocation: currentLocation,
+                    stops: stops,
+                    now: now
+                )
+
+                if Task.isCancelled {
+                    return
+                }
+
+                await MainActor.run {
+                    routeArrivalStates[route.id] = arrivalState
+                    routeArrivalCache[route.id] = SavedRouteArrivalCacheEntry(
+                        state: arrivalState,
+                        updatedAt: Date()
+                    )
+                }
+            }
+        }
+    }
+
+    func supportsSavedRouteLiveArrival(_ route: TTCAlertRoute) -> Bool {
+        route.routeType == .bus || route.routeType == .streetcar
     }
 
     func rebuildRouteAlertCache() {
