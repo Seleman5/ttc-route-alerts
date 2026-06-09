@@ -286,6 +286,20 @@ enum TTCStaticScheduleStore {
         }
     }
 
+    static func routeIDsServingStop(for stopID: String) -> Result<Set<String>, TTCStaticScheduleError> {
+        bundledSchedule(for: stopID).map { schedule in
+            routeIDsServingStop(for: stopID, in: schedule)
+        }
+    }
+
+    static func routeIDsServingStop(for stopID: String, in schedule: TTCStaticScheduleData) -> Set<String> {
+        let stopTimes = schedule.stopTimesByStopID[stopID] ?? []
+
+        return Set(stopTimes.compactMap { stopTime in
+            schedule.tripsByID[stopTime.tripID]?.routeID
+        })
+    }
+
     private static let bundledTripRouteDataCache: TTCTripRouteData = {
         let trips = loadBundledTrips()
         let routes = RouteSuggestion.suggestedRoutes

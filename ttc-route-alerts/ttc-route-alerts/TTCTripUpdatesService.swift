@@ -111,6 +111,7 @@ struct TTCTripUpdatesService {
         stopID: String,
         alternateStopIDs: [String] = [],
         stopTimeSequenceKeys: Set<String> = [],
+        servedRouteIDs: Set<String>? = nil,
         tripsByID: [String: GTFSTrip],
         routesByID: [String: SuggestedRoute],
         now: Date = Date(),
@@ -131,6 +132,7 @@ struct TTCTripUpdatesService {
             .reduce(into: [StopArrival]()) { arrivals, update in
                 guard let arrival = stopArrival(
                     from: update,
+                    servedRouteIDs: servedRouteIDs,
                     tripsByID: tripsByID,
                     routesByID: routesByID
                 ) else {
@@ -198,12 +200,14 @@ struct TTCTripUpdatesService {
 
     private static func stopArrival(
         from liveUpdate: TTCLiveStopTimeUpdate,
+        servedRouteIDs: Set<String>?,
         tripsByID: [String: GTFSTrip],
         routesByID: [String: SuggestedRoute]
     ) -> StopArrival? {
         let routeID = liveUpdate.routeID ?? tripsByID[liveUpdate.tripID]?.routeID
 
         guard let routeID,
+              routeIDIsServed(routeID, servedRouteIDs: servedRouteIDs),
               let route = route(for: routeID, routesByID: routesByID) else {
             return nil
         }
@@ -285,6 +289,28 @@ struct TTCTripUpdatesService {
         }
     }
 
+    private static func routeIDIsServed(_ routeID: String, servedRouteIDs: Set<String>?) -> Bool {
+        guard let servedRouteIDs else {
+            return true
+        }
+
+        if servedRouteIDs.contains(routeID) {
+            return true
+        }
+
+        let liveRouteNumber = routeNumberToken(in: routeID) ?? leadingNumber(in: routeID)
+
+        guard let liveRouteNumber else {
+            return false
+        }
+
+        return servedRouteIDs.contains { servedRouteID in
+            servedRouteID == liveRouteNumber
+                || routeNumberToken(in: servedRouteID) == liveRouteNumber
+                || leadingNumber(in: servedRouteID) == liveRouteNumber
+        }
+    }
+
     private static func leadingNumber(in text: String) -> String? {
         let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         let digits = trimmedText.prefix { character in
@@ -296,6 +322,20 @@ struct TTCTripUpdatesService {
         }
 
         return String(digits)
+    }
+
+    private static func routeNumberToken(in text: String) -> String? {
+        var digits = ""
+
+        for character in text {
+            if character.isNumber {
+                digits.append(character)
+            } else if !digits.isEmpty {
+                break
+            }
+        }
+
+        return digits.isEmpty ? nil : digits
     }
 
     private static func displayTime(for date: Date) -> String {

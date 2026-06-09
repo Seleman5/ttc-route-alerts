@@ -9,6 +9,7 @@ struct StopDetailArrivalLoadResult: Equatable {
     let arrivals: [StopArrival]
     let dataSource: StopArrivalSource?
     let dataSourceMessage: String?
+    let fallbackSectionTitle: String?
     let scheduleError: TTCStaticScheduleError?
     let diagnostics: StopDetailArrivalDiagnostics
 }
@@ -32,9 +33,12 @@ struct StopDetailArrivalDiagnostics: Equatable {
 struct StopDetailArrivalLoader {
     static let liveMessage = "Showing live TTC predictions"
     static let scheduledFallbackMessage = "Showing scheduled fallback times"
+    static let noLivePredictionsMessage = "No live predictions available for this stop."
+    static let scheduledFallbackSectionTitle = "Scheduled fallback"
 
     var fetchLiveUpdates: () async throws -> [TTCLiveStopTimeUpdate]
     var usesSequenceFallback: Bool
+    var fetchServedRouteIDs: (String) async -> Result<Set<String>, TTCStaticScheduleError>
     var fetchStopTimeSequenceKeys: (String) async -> Result<Set<String>, TTCStaticScheduleError>
     var fetchScheduledArrivals: (String) async -> Result<[StopArrival], TTCStaticScheduleError>
 
@@ -43,6 +47,11 @@ struct StopDetailArrivalLoader {
             try await TTCTripUpdatesService().fetchTripUpdatesFeed()
         },
         usesSequenceFallback: Bool = false,
+        fetchServedRouteIDs: @escaping (String) async -> Result<Set<String>, TTCStaticScheduleError> = { stopID in
+            await Task.detached {
+                TTCStaticScheduleStore.routeIDsServingStop(for: stopID)
+            }.value
+        },
         fetchStopTimeSequenceKeys: @escaping (String) async -> Result<Set<String>, TTCStaticScheduleError> = { stopID in
             await Task.detached {
                 TTCStaticScheduleStore.stopTimeSequenceKeys(for: stopID)
@@ -56,6 +65,7 @@ struct StopDetailArrivalLoader {
     ) {
         self.fetchLiveUpdates = fetchLiveUpdates
         self.usesSequenceFallback = usesSequenceFallback
+        self.fetchServedRouteIDs = fetchServedRouteIDs
         self.fetchStopTimeSequenceKeys = fetchStopTimeSequenceKeys
         self.fetchScheduledArrivals = fetchScheduledArrivals
     }
@@ -68,9 +78,11 @@ struct StopDetailArrivalLoader {
         limit: Int = 10
     ) async -> StopDetailArrivalLoadResult {
         var diagnostics = StopDetailArrivalDiagnostics.empty
+        async let servedRouteIDsResult = fetchServedRouteIDs(stopID)
 
         do {
             let liveUpdates = try await fetchLiveUpdates()
+            let servedRouteIDs = routeValidationIDs(from: await servedRouteIDsResult)
             let matchingLiveUpdates = TTCTripUpdatesService.matchingLiveUpdates(
                 from: liveUpdates,
                 stopID: stopID,
@@ -87,6 +99,7 @@ struct StopDetailArrivalLoader {
                 from: matchingLiveUpdates,
                 stopID: stopID,
                 alternateStopIDs: matchingStopIDs.filter { $0 != stopID },
+                servedRouteIDs: servedRouteIDs,
                 tripsByID: tripRouteData.tripsByID,
                 routesByID: tripRouteData.routesByID,
                 now: now,
@@ -98,6 +111,7 @@ struct StopDetailArrivalLoader {
                     arrivals: liveArrivals,
                     dataSource: .live,
                     dataSourceMessage: Self.liveMessage,
+                    fallbackSectionTitle: nil,
                     scheduleError: nil,
                     diagnostics: diagnostics
                 )
@@ -111,6 +125,7 @@ struct StopDetailArrivalLoader {
                     stopID: stopID,
                     alternateStopIDs: matchingStopIDs.filter { $0 != stopID },
                     stopTimeSequenceKeys: sequenceKeys,
+                    servedRouteIDs: servedRouteIDs,
                     tripsByID: tripRouteData.tripsByID,
                     routesByID: tripRouteData.routesByID,
                     now: now,
@@ -130,6 +145,7 @@ struct StopDetailArrivalLoader {
                         arrivals: sequenceMatchedLiveArrivals,
                         dataSource: .live,
                         dataSourceMessage: Self.liveMessage,
+                        fallbackSectionTitle: nil,
                         scheduleError: nil,
                         diagnostics: diagnostics
                     )
@@ -144,6 +160,7 @@ struct StopDetailArrivalLoader {
                 fallbackUsed: true
             )
             // If live TTC predictions cannot be loaded, the stop detail screen falls back to static GTFS.
+            _ = await servedRouteIDsResult
         }
 
         let scheduledResult = await fetchScheduledArrivals(stopID)
@@ -153,7 +170,8 @@ struct StopDetailArrivalLoader {
             return StopDetailArrivalLoadResult(
                 arrivals: scheduledArrivals,
                 dataSource: .scheduled,
-                dataSourceMessage: Self.scheduledFallbackMessage,
+                dataSourceMessage: Self.noLivePredictionsMessage,
+                fallbackSectionTitle: scheduledArrivals.isEmpty ? nil : Self.scheduledFallbackSectionTitle,
                 scheduleError: nil,
                 diagnostics: StopDetailArrivalDiagnostics(
                     liveFeedFetchedSuccessfully: diagnostics.liveFeedFetchedSuccessfully,
@@ -168,6 +186,7 @@ struct StopDetailArrivalLoader {
                 arrivals: [],
                 dataSource: nil,
                 dataSourceMessage: nil,
+                fallbackSectionTitle: nil,
                 scheduleError: scheduleError,
                 diagnostics: StopDetailArrivalDiagnostics(
                     liveFeedFetchedSuccessfully: diagnostics.liveFeedFetchedSuccessfully,
@@ -178,6 +197,10 @@ struct StopDetailArrivalLoader {
                 )
             )
         }
+    }
+
+    private func routeValidationIDs(from result: Result<Set<String>, TTCStaticScheduleError>) -> Set<String> {
+        (try? result.get()) ?? []
     }
 }
 
@@ -190,6 +213,7 @@ struct StopDetailView: View {
     @State private var errorMessage: String?
     @State private var dataSource: StopArrivalSource?
     @State private var dataSourceMessage: String?
+    @State private var fallbackSectionTitle: String?
     @State private var diagnostics: StopDetailArrivalDiagnostics?
 
     private let arrivalLoader = StopDetailArrivalLoader()
@@ -321,6 +345,13 @@ struct StopDetailView: View {
                     tint: ttcRed
                 )
             } else {
+                if let fallbackSectionTitle {
+                    Text(fallbackSectionTitle)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .accessibilityAddTraits(.isHeader)
+                }
+
                 ForEach(arrivals) { arrival in
                     ScheduledArrivalRow(arrival: arrival, ttcRed: ttcRed)
                 }
@@ -334,6 +365,7 @@ struct StopDetailView: View {
         errorMessage = nil
         dataSource = nil
         dataSourceMessage = nil
+        fallbackSectionTitle = nil
         diagnostics = nil
 
         let stopID = nearbyStop.stop.stopID
@@ -347,11 +379,13 @@ struct StopDetailView: View {
         arrivals = result.arrivals
         dataSource = result.dataSource
         dataSourceMessage = result.dataSourceMessage
+        fallbackSectionTitle = result.fallbackSectionTitle
         diagnostics = result.diagnostics
 
         if let scheduleError = result.scheduleError {
             arrivals = []
             dataSource = nil
+            fallbackSectionTitle = nil
             errorMessage = message(for: scheduleError)
         }
 

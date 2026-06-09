@@ -187,6 +187,65 @@ final class TTCTripUpdatesServiceTests: XCTestCase {
         XCTAssertEqual(arrivals[0].routeName, "Flemingdon Park")
     }
 
+    func testStopArrivalsSkipsRouteWhenStaticScheduleDoesNotServeStop() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let updates = [
+            TTCLiveStopTimeUpdate(
+                tripID: "trip-504",
+                routeID: "route-504",
+                stopID: "stop-1",
+                arrivalDate: Date(timeIntervalSince1970: 1_800_000_300)
+            )
+        ]
+        let tripsByID = [
+            "trip-504": GTFSTrip(tripID: "trip-504", routeID: "route-504", headsign: "King")
+        ]
+        let routesByID = [
+            "route-504": SuggestedRoute(routeID: "route-504", routeType: .streetcar, routeNumber: "504", nickname: "King")
+        ]
+
+        let arrivals = TTCTripUpdatesService.stopArrivals(
+            from: updates,
+            stopID: "stop-1",
+            servedRouteIDs: ["route-100"],
+            tripsByID: tripsByID,
+            routesByID: routesByID,
+            now: now
+        )
+
+        XCTAssertTrue(arrivals.isEmpty)
+    }
+
+    func testStopArrivalsAllowsBranchRouteWhenStaticScheduleServesBaseRoute() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let updates = [
+            TTCLiveStopTimeUpdate(
+                tripID: "trip-100a",
+                routeID: "100A",
+                stopID: "stop-1",
+                arrivalDate: Date(timeIntervalSince1970: 1_800_000_300)
+            )
+        ]
+        let tripsByID = [
+            "trip-100a": GTFSTrip(tripID: "trip-100a", routeID: "100", headsign: "100A Flemingdon Park")
+        ]
+        let routesByID = [
+            "100": SuggestedRoute(routeID: "100", routeType: .bus, routeNumber: "100", nickname: "Flemingdon Park")
+        ]
+
+        let arrivals = TTCTripUpdatesService.stopArrivals(
+            from: updates,
+            stopID: "stop-1",
+            servedRouteIDs: ["100"],
+            tripsByID: tripsByID,
+            routesByID: routesByID,
+            now: now
+        )
+
+        XCTAssertEqual(arrivals.count, 1)
+        XCTAssertEqual(arrivals[0].routeNumber, "100")
+    }
+
     func testStopArrivalsFiltersPastRowsSortsAndLabelsLive() {
         let now = Date(timeIntervalSince1970: 1_800_000_100)
         let updates = [

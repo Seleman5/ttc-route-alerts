@@ -122,6 +122,29 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
         XCTAssertEqual(arrivals.map(\.routeNumber), ["501", "504", "501", "501"])
     }
 
+    func testRouteIDsServingStopUsesStopTimesAndTrips() {
+        let schedule = TTCStaticScheduleStore.scheduleData(
+            stopTimes: [
+                GTFSStopTime(tripID: "trip-100", arrivalTime: "08:10:00", stopID: "stop-1", arrivalSeconds: 29_400),
+                GTFSStopTime(tripID: "trip-100b", arrivalTime: "08:20:00", stopID: "stop-1", arrivalSeconds: 30_000),
+                GTFSStopTime(tripID: "trip-504", arrivalTime: "08:30:00", stopID: "stop-2", arrivalSeconds: 30_600)
+            ],
+            trips: [
+                GTFSTrip(tripID: "trip-100", routeID: "100", headsign: "Flemingdon Park"),
+                GTFSTrip(tripID: "trip-100b", routeID: "100", headsign: "Flemingdon Park"),
+                GTFSTrip(tripID: "trip-504", routeID: "504", headsign: "King")
+            ],
+            routes: [
+                SuggestedRoute(routeID: "100", routeType: .bus, routeNumber: "100", nickname: "Flemingdon Park"),
+                SuggestedRoute(routeID: "504", routeType: .streetcar, routeNumber: "504", nickname: "King")
+            ]
+        )
+
+        let routeIDs = TTCStaticScheduleStore.routeIDsServingStop(for: "stop-1", in: schedule)
+
+        XCTAssertEqual(routeIDs, ["100"])
+    }
+
     func testSecondsSinceMidnightRejectsInvalidTimes() {
         XCTAssertNil(TTCStaticScheduleStore.secondsSinceMidnight(in: "08:75:00"))
         XCTAssertNil(TTCStaticScheduleStore.secondsSinceMidnight(in: "not-a-time"))
@@ -164,6 +187,9 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
             fetchLiveUpdates: {
                 [liveUpdate]
             },
+            fetchServedRouteIDs: { _ in
+                .success(["route-501"])
+            },
             fetchScheduledArrivals: { _ in
                 scheduledFetchCount += 1
                 return .success([scheduledArrival])
@@ -181,6 +207,7 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
         XCTAssertEqual(result.arrivals[0].source, .live)
         XCTAssertEqual(result.dataSource, .live)
         XCTAssertEqual(result.dataSourceMessage, StopDetailArrivalLoader.liveMessage)
+        XCTAssertNil(result.fallbackSectionTitle)
         XCTAssertEqual(result.scheduleError, nil)
         XCTAssertEqual(result.diagnostics.liveFeedFetchedSuccessfully, true)
         XCTAssertEqual(result.diagnostics.liveUpdateCount, 1)
@@ -195,6 +222,9 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
         let loader = StopDetailArrivalLoader(
             fetchLiveUpdates: {
                 []
+            },
+            fetchServedRouteIDs: { _ in
+                .success(["route-501"])
             },
             fetchStopTimeSequenceKeys: { _ in
                 .success([])
@@ -213,7 +243,8 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
 
         XCTAssertEqual(result.arrivals, [scheduledArrival])
         XCTAssertEqual(result.dataSource, .scheduled)
-        XCTAssertEqual(result.dataSourceMessage, StopDetailArrivalLoader.scheduledFallbackMessage)
+        XCTAssertEqual(result.dataSourceMessage, StopDetailArrivalLoader.noLivePredictionsMessage)
+        XCTAssertEqual(result.fallbackSectionTitle, StopDetailArrivalLoader.scheduledFallbackSectionTitle)
         XCTAssertEqual(result.scheduleError, nil)
         XCTAssertEqual(result.diagnostics.liveFeedFetchedSuccessfully, true)
         XCTAssertEqual(result.diagnostics.liveUpdateCount, 0)
@@ -237,6 +268,9 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
                     )
                 ]
             },
+            fetchServedRouteIDs: { _ in
+                .success(["route-501"])
+            },
             fetchStopTimeSequenceKeys: { _ in
                 sequenceFetchCount += 1
                 return .success([
@@ -257,6 +291,7 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
 
         XCTAssertEqual(result.arrivals, [scheduledArrival])
         XCTAssertEqual(result.dataSource, .scheduled)
+        XCTAssertEqual(result.fallbackSectionTitle, StopDetailArrivalLoader.scheduledFallbackSectionTitle)
         XCTAssertEqual(result.diagnostics.matchingLiveUpdateCount, 0)
         XCTAssertEqual(result.diagnostics.fallbackUsed, true)
         XCTAssertEqual(sequenceFetchCount, 0)
@@ -278,6 +313,9 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
                 [liveUpdate]
             },
             usesSequenceFallback: true,
+            fetchServedRouteIDs: { _ in
+                .success(["route-501"])
+            },
             fetchStopTimeSequenceKeys: { _ in
                 .success([
                     TTCStaticScheduleStore.sequenceKey(tripID: "live-trip", stopSequence: 4)
@@ -299,6 +337,7 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
         XCTAssertEqual(result.arrivals.count, 1)
         XCTAssertEqual(result.arrivals[0].source, .live)
         XCTAssertEqual(result.dataSource, .live)
+        XCTAssertNil(result.fallbackSectionTitle)
         XCTAssertEqual(result.diagnostics.matchingLiveUpdateCount, 1)
         XCTAssertEqual(result.diagnostics.fallbackUsed, false)
         XCTAssertEqual(scheduledFetchCount, 0)
@@ -318,6 +357,9 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
                         arrivalDate: Date(timeIntervalSince1970: TimeInterval(1_800_000_300 + liveFetchCount))
                     )
                 ]
+            },
+            fetchServedRouteIDs: { _ in
+                .success(["route-501"])
             },
             fetchScheduledArrivals: { _ in
                 .success([])
@@ -342,6 +384,77 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
         XCTAssertEqual(secondResult.arrivals[0].id, "live-live-trip-2-stop-1-route-501-1800000302")
     }
 
+    func testStopDetailArrivalLoaderFiltersLiveRouteNotServedByStop() async {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let liveUpdate = TTCLiveStopTimeUpdate(
+            tripID: "live-504",
+            routeID: "route-504",
+            stopID: "stop-1",
+            arrivalDate: Date(timeIntervalSince1970: 1_800_000_300)
+        )
+        let scheduledArrival = stopArrival(id: "scheduled-100", source: .scheduled)
+        let loader = StopDetailArrivalLoader(
+            fetchLiveUpdates: {
+                [liveUpdate]
+            },
+            fetchServedRouteIDs: { _ in
+                .success(["route-100"])
+            },
+            fetchScheduledArrivals: { _ in
+                .success([scheduledArrival])
+            }
+        )
+
+        let result = await loader.loadArrivals(
+            for: "stop-1",
+            matchingStopIDs: ["stop-1"],
+            tripRouteData: tripRouteDataWithMultipleRoutes(),
+            now: now
+        )
+
+        XCTAssertEqual(result.arrivals, [scheduledArrival])
+        XCTAssertEqual(result.dataSource, .scheduled)
+        XCTAssertEqual(result.dataSourceMessage, StopDetailArrivalLoader.noLivePredictionsMessage)
+        XCTAssertEqual(result.fallbackSectionTitle, StopDetailArrivalLoader.scheduledFallbackSectionTitle)
+        XCTAssertEqual(result.diagnostics.liveUpdateCount, 1)
+        XCTAssertEqual(result.diagnostics.matchingLiveUpdateCount, 1)
+        XCTAssertEqual(result.diagnostics.fallbackUsed, true)
+    }
+
+    func testStopDetailArrivalLoaderDoesNotShowLiveRowsWhenRouteValidationIsUnavailable() async {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let liveUpdate = TTCLiveStopTimeUpdate(
+            tripID: "live-trip",
+            routeID: "route-501",
+            stopID: "stop-1",
+            arrivalDate: Date(timeIntervalSince1970: 1_800_000_300)
+        )
+        let loader = StopDetailArrivalLoader(
+            fetchLiveUpdates: {
+                [liveUpdate]
+            },
+            fetchServedRouteIDs: { _ in
+                .failure(.missingFile("stop_times.txt"))
+            },
+            fetchScheduledArrivals: { _ in
+                .failure(.missingFile("stop_times.txt"))
+            }
+        )
+
+        let result = await loader.loadArrivals(
+            for: "stop-1",
+            matchingStopIDs: ["stop-1"],
+            tripRouteData: tripRouteData(),
+            now: now
+        )
+
+        XCTAssertTrue(result.arrivals.isEmpty)
+        XCTAssertNil(result.dataSource)
+        XCTAssertEqual(result.scheduleError, .missingFile("stop_times.txt"))
+        XCTAssertEqual(result.diagnostics.matchingLiveUpdateCount, 1)
+        XCTAssertEqual(result.diagnostics.fallbackUsed, true)
+    }
+
     private func stopArrival(id: String, source: StopArrivalSource) -> StopArrival {
         StopArrival(
             id: id,
@@ -364,6 +477,19 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
             ],
             routes: [
                 SuggestedRoute(routeID: "route-501", routeType: .streetcar, routeNumber: "501", nickname: "Queen")
+            ]
+        )
+    }
+
+    private func tripRouteDataWithMultipleRoutes() -> TTCTripRouteData {
+        TTCStaticScheduleStore.tripRouteData(
+            trips: [
+                GTFSTrip(tripID: "live-100", routeID: "route-100", headsign: "Flemingdon Park"),
+                GTFSTrip(tripID: "live-504", routeID: "route-504", headsign: "King")
+            ],
+            routes: [
+                SuggestedRoute(routeID: "route-100", routeType: .bus, routeNumber: "100", nickname: "Flemingdon Park"),
+                SuggestedRoute(routeID: "route-504", routeType: .streetcar, routeNumber: "504", nickname: "King")
             ]
         )
     }
