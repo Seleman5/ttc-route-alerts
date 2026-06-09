@@ -184,6 +184,9 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
         let scheduledArrival = stopArrival(id: "scheduled", source: .scheduled)
         var scheduledFetchCount = 0
         let loader = StopDetailArrivalLoader(
+            fetchBusTimePredictions: { _, _, _, _ in
+                []
+            },
             fetchLiveUpdates: {
                 [liveUpdate]
             },
@@ -220,6 +223,9 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
         let scheduledArrival = stopArrival(id: "scheduled", source: .scheduled)
         var scheduledFetchCount = 0
         let loader = StopDetailArrivalLoader(
+            fetchBusTimePredictions: { _, _, _, _ in
+                []
+            },
             fetchLiveUpdates: {
                 []
             },
@@ -257,6 +263,9 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
         let scheduledArrival = stopArrival(id: "scheduled", source: .scheduled)
         var sequenceFetchCount = 0
         let loader = StopDetailArrivalLoader(
+            fetchBusTimePredictions: { _, _, _, _ in
+                []
+            },
             fetchLiveUpdates: {
                 [
                     TTCLiveStopTimeUpdate(
@@ -309,6 +318,9 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
         let scheduledArrival = stopArrival(id: "scheduled", source: .scheduled)
         var scheduledFetchCount = 0
         let loader = StopDetailArrivalLoader(
+            fetchBusTimePredictions: { _, _, _, _ in
+                []
+            },
             fetchLiveUpdates: {
                 [liveUpdate]
             },
@@ -347,6 +359,9 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         var liveFetchCount = 0
         let loader = StopDetailArrivalLoader(
+            fetchBusTimePredictions: { _, _, _, _ in
+                []
+            },
             fetchLiveUpdates: {
                 liveFetchCount += 1
                 return [
@@ -394,6 +409,9 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
         )
         let scheduledArrival = stopArrival(id: "scheduled-100", source: .scheduled)
         let loader = StopDetailArrivalLoader(
+            fetchBusTimePredictions: { _, _, _, _ in
+                []
+            },
             fetchLiveUpdates: {
                 [liveUpdate]
             },
@@ -421,6 +439,50 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
         XCTAssertEqual(result.diagnostics.fallbackUsed, true)
     }
 
+    func testStopDetailArrivalLoaderPrefersBusTimeRowsBeforeGTFSRealtimeAndScheduled() async {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let busTimeArrival = stopArrival(id: "bustime", source: .live)
+        let scheduledArrival = stopArrival(id: "scheduled", source: .scheduled)
+        var liveFetchCount = 0
+        var scheduledFetchCount = 0
+
+        let loader = StopDetailArrivalLoader(
+            fetchBusTimePredictions: { stopIDs, _, _, _ in
+                XCTAssertEqual(stopIDs, ["stop-1", "1001"])
+                return [busTimeArrival]
+            },
+            fetchLiveUpdates: {
+                liveFetchCount += 1
+                return [
+                    TTCLiveStopTimeUpdate(
+                        tripID: "live-trip",
+                        routeID: "route-501",
+                        stopID: "stop-1",
+                        arrivalDate: Date(timeIntervalSince1970: 1_800_000_300)
+                    )
+                ]
+            },
+            fetchScheduledArrivals: { _ in
+                scheduledFetchCount += 1
+                return .success([scheduledArrival])
+            }
+        )
+
+        let result = await loader.loadArrivals(
+            for: "stop-1",
+            matchingStopIDs: ["stop-1", "1001"],
+            tripRouteData: tripRouteData(),
+            now: now
+        )
+
+        XCTAssertEqual(result.arrivals, [busTimeArrival])
+        XCTAssertEqual(result.dataSource, .live)
+        XCTAssertEqual(result.dataSourceMessage, StopDetailArrivalLoader.liveMessage)
+        XCTAssertNil(result.fallbackSectionTitle)
+        XCTAssertEqual(liveFetchCount, 0)
+        XCTAssertEqual(scheduledFetchCount, 0)
+    }
+
     func testStopDetailArrivalLoaderDoesNotShowLiveRowsWhenRouteValidationIsUnavailable() async {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let liveUpdate = TTCLiveStopTimeUpdate(
@@ -430,6 +492,9 @@ final class TTCStaticScheduleStoreTests: XCTestCase {
             arrivalDate: Date(timeIntervalSince1970: 1_800_000_300)
         )
         let loader = StopDetailArrivalLoader(
+            fetchBusTimePredictions: { _, _, _, _ in
+                []
+            },
             fetchLiveUpdates: {
                 [liveUpdate]
             },
