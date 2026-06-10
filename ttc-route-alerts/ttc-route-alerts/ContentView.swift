@@ -347,7 +347,16 @@ struct ContentView: View {
                 List {
                     ForEach(savedRoutes) { route in
                         NavigationLink {
-                            RouteDetailView(route: route, severity: routeSeverity(for: route), alerts: matchingAlerts(for: route), lastUpdatedText: lastUpdatedText, ttcRed: ttcRed, appBackground: appBackground)
+                            RouteDetailView(
+                                route: route,
+                                severity: routeSeverity(for: route),
+                                alerts: matchingAlerts(for: route),
+                                lastUpdatedText: lastUpdatedText,
+                                ttcRed: ttcRed,
+                                appBackground: appBackground,
+                                locationManager: locationManager,
+                                cachedArrivalDetail: cachedRouteArrivalDetail(for: route)
+                            )
                         } label: {
                             RouteCardView(
                                 route: route,
@@ -662,6 +671,17 @@ struct ContentView: View {
         return .unavailable
     }
 
+    func cachedRouteArrivalDetail(for route: TTCAlertRoute) -> SavedRouteArrivalDetail? {
+        guard savedRouteArrivalPreviewEnabled,
+              supportsSavedRouteLiveArrival(route),
+              let cachedArrival = routeArrivalCache[route.id],
+              Date().timeIntervalSince(cachedArrival.updatedAt) < routeArrivalCacheDuration else {
+            return nil
+        }
+
+        return cachedArrival.detail
+    }
+
     func requestSavedRouteLocationIfNeeded() {
         guard savedRouteArrivalPreviewEnabled,
               selectedMainScreen == .alerts,
@@ -729,7 +749,7 @@ struct ContentView: View {
         let arrivalService = savedRouteArrivalService
 
         routeArrivalTask = Task {
-            let arrivalStates = await arrivalService.nextArrivalStates(
+            let arrivalDetails = await arrivalService.nextArrivalDetails(
                 for: routesToLoad,
                 currentLocation: currentLocation,
                 stops: stops,
@@ -742,10 +762,10 @@ struct ContentView: View {
 
             await MainActor.run {
                 for route in routesToLoad {
-                    let arrivalState = arrivalStates[route.id] ?? .unavailable
-                    routeArrivalStates[route.id] = arrivalState
+                    let arrivalDetail = arrivalDetails[route.id] ?? .unavailable
+                    routeArrivalStates[route.id] = arrivalDetail.state
                     routeArrivalCache[route.id] = SavedRouteArrivalCacheEntry(
-                        state: arrivalState,
+                        detail: arrivalDetail,
                         updatedAt: Date()
                     )
                 }

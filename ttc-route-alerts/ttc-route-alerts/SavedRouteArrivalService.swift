@@ -39,8 +39,28 @@ enum SavedRouteArrivalState: Equatable {
 }
 
 struct SavedRouteArrivalCacheEntry {
-    let state: SavedRouteArrivalState
+    let detail: SavedRouteArrivalDetail
     let updatedAt: Date
+
+    var state: SavedRouteArrivalState {
+        detail.state
+    }
+}
+
+struct SavedRouteArrivalDetail: Equatable {
+    let state: SavedRouteArrivalState
+    let stop: TTCStop?
+    let distanceInMeters: CLLocationDistance?
+    let arrivalDate: Date?
+    let source: StopArrivalSource?
+
+    static let unavailable = SavedRouteArrivalDetail(
+        state: .unavailable,
+        stop: nil,
+        distanceInMeters: nil,
+        arrivalDate: nil,
+        source: nil
+    )
 }
 
 struct SavedRouteArrivalService {
@@ -72,6 +92,22 @@ struct SavedRouteArrivalService {
         stops: [TTCStop],
         now: Date = Date()
     ) async -> [UUID: SavedRouteArrivalState] {
+        let details = await nextArrivalDetails(
+            for: routes,
+            currentLocation: currentLocation,
+            stops: stops,
+            now: now
+        )
+
+        return details.mapValues(\.state)
+    }
+
+    func nextArrivalDetails(
+        for routes: [TTCAlertRoute],
+        currentLocation: CLLocation,
+        stops: [TTCStop],
+        now: Date = Date()
+    ) async -> [UUID: SavedRouteArrivalDetail] {
         let eligibleRoutes = routes.filter { route in
             route.supportsSavedRouteLiveArrival
         }
@@ -86,14 +122,14 @@ struct SavedRouteArrivalService {
         )
 
         guard !nearbyStops.isEmpty else {
-            return unavailableStates(for: eligibleRoutes)
+            return unavailableDetails(for: eligibleRoutes)
         }
 
         let predictionsByStopID = await livePredictionsByStopID(for: nearbyStops)
-        var states: [UUID: SavedRouteArrivalState] = [:]
+        var details: [UUID: SavedRouteArrivalDetail] = [:]
 
         for route in eligibleRoutes {
-            states[route.id] = nextArrivalState(
+            details[route.id] = nextArrivalDetail(
                 for: route,
                 nearbyStops: nearbyStops,
                 predictionsByStopID: predictionsByStopID,
@@ -101,7 +137,7 @@ struct SavedRouteArrivalService {
             )
         }
 
-        return states
+        return details
     }
 
     private func livePredictionsByStopID(
@@ -154,12 +190,12 @@ struct SavedRouteArrivalService {
         }
     }
 
-    private func nextArrivalState(
+    private func nextArrivalDetail(
         for route: TTCAlertRoute,
         nearbyStops: [NearbyStop],
         predictionsByStopID: [String: [TTCBusTimePrediction]],
         now: Date
-    ) -> SavedRouteArrivalState {
+    ) -> SavedRouteArrivalDetail {
         for nearbyStop in nearbyStops {
             let matchingPrediction = (predictionsByStopID[nearbyStop.stop.stopID] ?? [])
                 .filter { prediction in
@@ -171,16 +207,22 @@ struct SavedRouteArrivalService {
                 .first
 
             if let matchingPrediction {
-                return .arrival(minutes: minutesUntilArrival(matchingPrediction.arrivalDate, now: now))
+                return SavedRouteArrivalDetail(
+                    state: .arrival(minutes: minutesUntilArrival(matchingPrediction.arrivalDate, now: now)),
+                    stop: nearbyStop.stop,
+                    distanceInMeters: nearbyStop.distanceInMeters,
+                    arrivalDate: matchingPrediction.arrivalDate,
+                    source: .live
+                )
             }
         }
 
         return .unavailable
     }
 
-    private func unavailableStates(for routes: [TTCAlertRoute]) -> [UUID: SavedRouteArrivalState] {
+    private func unavailableDetails(for routes: [TTCAlertRoute]) -> [UUID: SavedRouteArrivalDetail] {
         Dictionary(uniqueKeysWithValues: routes.map { route in
-            (route.id, SavedRouteArrivalState.unavailable)
+            (route.id, SavedRouteArrivalDetail.unavailable)
         })
     }
 

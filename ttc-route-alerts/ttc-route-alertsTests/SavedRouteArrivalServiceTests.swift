@@ -93,6 +93,42 @@ final class SavedRouteArrivalServiceTests: XCTestCase {
         XCTAssertEqual(states[route.id], .arrival(minutes: 7))
     }
 
+    func testArrivalDetailsIncludeMatchingStopDistanceAndLiveSource() async {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let route = busRoute(number: "100")
+        let service = SavedRouteArrivalService(
+            fetchPredictions: { stopIDs, _ in
+                if stopIDs.contains("nearest-stop") {
+                    return [
+                        self.prediction(routeTag: "32", arrivalDate: Date(timeIntervalSince1970: 1_800_000_120))
+                    ]
+                }
+
+                return [
+                    self.prediction(routeTag: "100", arrivalDate: Date(timeIntervalSince1970: 1_800_000_420))
+                ]
+            },
+            nearbyStopLimit: 2
+        )
+
+        let details = await service.nextArrivalDetails(
+            for: [route],
+            currentLocation: userLocation,
+            stops: [
+                stop(id: "nearest-stop", latitudeOffset: 0.001),
+                stop(id: "matching-stop", latitudeOffset: 0.002)
+            ],
+            now: now
+        )
+
+        let detail = details[route.id]
+        XCTAssertEqual(detail?.state, .arrival(minutes: 7))
+        XCTAssertEqual(detail?.stop?.stopID, "matching-stop")
+        XCTAssertEqual(detail?.source, .live)
+        XCTAssertEqual(detail?.arrivalDate, Date(timeIntervalSince1970: 1_800_000_420))
+        XCTAssertEqual(detail?.distanceInMeters ?? 0, userLocation.distance(from: stop(id: "matching-stop", latitudeOffset: 0.002).location), accuracy: 0.1)
+    }
+
     func testLimitsNearbyStopWork() async {
         let route = busRoute(number: "100")
         var fetchedStopIDs: Set<String> = []
