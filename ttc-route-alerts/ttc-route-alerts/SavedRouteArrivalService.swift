@@ -43,9 +43,25 @@ struct SavedRouteArrivalCacheEntry {
     let updatedAt: Date
 }
 
+struct SavedRouteArrivalDebugInfo: Equatable {
+    let selectedStopName: String?
+    let selectedStopID: String?
+    let selectedStopDistanceInMeters: CLLocationDistance?
+    let nearestSearchedStopName: String?
+    let nearestSearchedStopID: String?
+    let nearestSearchedStopDistanceInMeters: CLLocationDistance?
+    let didBusTimeReturnPredictionsForSelectedStop: Bool
+}
+
+struct SavedRouteArrivalResult: Equatable {
+    let state: SavedRouteArrivalState
+    let debugInfo: SavedRouteArrivalDebugInfo
+}
+
 struct SavedRouteArrivalService {
     var fetchPredictions: ([String], TimeInterval) async throws -> [TTCBusTimePrediction]
     var nearbyStopLimit: Int
+    var maxStopDistanceInMeters: CLLocationDistance?
     var lookupTimeout: TimeInterval
 
     init(
@@ -55,11 +71,13 @@ struct SavedRouteArrivalService {
                 requestTimeout: timeout
             )
         },
-        nearbyStopLimit: Int = 4,
+        nearbyStopLimit: Int = 12,
+        maxStopDistanceInMeters: CLLocationDistance? = 800,
         lookupTimeout: TimeInterval = 2.5
     ) {
         self.fetchPredictions = fetchPredictions
         self.nearbyStopLimit = nearbyStopLimit
+        self.maxStopDistanceInMeters = maxStopDistanceInMeters
         self.lookupTimeout = lookupTimeout
     }
 
@@ -69,6 +87,22 @@ struct SavedRouteArrivalService {
         stops: [TTCStop],
         now: Date = Date()
     ) async -> [UUID: SavedRouteArrivalState] {
+        let results = await nextArrivalResults(
+            for: routes,
+            currentLocation: currentLocation,
+            stops: stops,
+            now: now
+        )
+
+        return results.mapValues(\.state)
+    }
+
+    func nextArrivalResults(
+        for routes: [TTCAlertRoute],
+        currentLocation: CLLocation,
+        stops: [TTCStop],
+        now: Date = Date()
+    ) async -> [UUID: SavedRouteArrivalResult] {
         let eligibleRoutes = routes.filter { route in
             route.supportsSavedRouteLiveArrival
         }
@@ -77,21 +111,20 @@ struct SavedRouteArrivalService {
             return [:]
         }
 
-        let nearbyStops = TTCStopsStore.closestStops(
+        let nearbyStops = stopsForSavedRouteArrivalPreview(
             to: currentLocation,
-            from: stops,
-            limit: nearbyStopLimit
+            from: stops
         )
 
         guard !nearbyStops.isEmpty else {
-            return unavailableStates(for: eligibleRoutes)
+            return unavailableResults(for: eligibleRoutes, nearestSearchedStop: nil)
         }
 
         let predictionsByStopID = await livePredictionsByStopID(for: nearbyStops)
-        var states: [UUID: SavedRouteArrivalState] = [:]
+        var results: [UUID: SavedRouteArrivalResult] = [:]
 
         for route in eligibleRoutes {
-            states[route.id] = nextArrivalState(
+            results[route.id] = nextArrivalResult(
                 for: route,
                 nearbyStops: nearbyStops,
                 predictionsByStopID: predictionsByStopID,
@@ -99,7 +132,7 @@ struct SavedRouteArrivalService {
             )
         }
 
-        return states
+        return results
     }
 
     private func livePredictionsByStopID(
@@ -133,14 +166,36 @@ struct SavedRouteArrivalService {
         }
     }
 
-    private func nextArrivalState(
+    private func stopsForSavedRouteArrivalPreview(
+        to currentLocation: CLLocation,
+        from stops: [TTCStop]
+    ) -> [NearbyStop] {
+        let closestStops = TTCStopsStore.closestStops(
+            to: currentLocation,
+            from: stops,
+            limit: nearbyStopLimit
+        )
+
+        guard let maxStopDistanceInMeters else {
+            return closestStops
+        }
+
+        return closestStops.filter { nearbyStop in
+            nearbyStop.distanceInMeters <= maxStopDistanceInMeters
+        }
+    }
+
+    private func nextArrivalResult(
         for route: TTCAlertRoute,
         nearbyStops: [NearbyStop],
         predictionsByStopID: [String: [TTCBusTimePrediction]],
         now: Date
-    ) -> SavedRouteArrivalState {
+    ) -> SavedRouteArrivalResult {
+        let nearestSearchedStop = nearbyStops.first
+
         for nearbyStop in nearbyStops {
-            let matchingPrediction = (predictionsByStopID[nearbyStop.stop.stopID] ?? [])
+            let predictions = predictionsByStopID[nearbyStop.stop.stopID] ?? []
+            let matchingPrediction = predictions
                 .filter { prediction in
                     prediction.arrivalDate >= now && Self.prediction(prediction, matches: route)
                 }
@@ -150,17 +205,61 @@ struct SavedRouteArrivalService {
                 .first
 
             if let matchingPrediction {
-                return .arrival(minutes: minutesUntilArrival(matchingPrediction.arrivalDate, now: now))
+                return SavedRouteArrivalResult(
+                    state: .arrival(minutes: minutesUntilArrival(matchingPrediction.arrivalDate, now: now)),
+                    debugInfo: debugInfo(
+                        selectedStop: nearbyStop,
+                        nearestSearchedStop: nearestSearchedStop,
+                        didBusTimeReturnPredictionsForSelectedStop: !predictions.isEmpty
+                    )
+                )
             }
         }
 
-        return .unavailable
+        return SavedRouteArrivalResult(
+            state: .unavailable,
+            debugInfo: debugInfo(
+                selectedStop: nil,
+                nearestSearchedStop: nearestSearchedStop,
+                didBusTimeReturnPredictionsForSelectedStop: nearestSearchedStop
+                    .map { !(predictionsByStopID[$0.stop.stopID] ?? []).isEmpty } ?? false
+            )
+        )
     }
 
-    private func unavailableStates(for routes: [TTCAlertRoute]) -> [UUID: SavedRouteArrivalState] {
+    private func unavailableResults(
+        for routes: [TTCAlertRoute],
+        nearestSearchedStop: NearbyStop?
+    ) -> [UUID: SavedRouteArrivalResult] {
         Dictionary(uniqueKeysWithValues: routes.map { route in
-            (route.id, SavedRouteArrivalState.unavailable)
+            (
+                route.id,
+                SavedRouteArrivalResult(
+                    state: .unavailable,
+                    debugInfo: debugInfo(
+                        selectedStop: nil,
+                        nearestSearchedStop: nearestSearchedStop,
+                        didBusTimeReturnPredictionsForSelectedStop: false
+                    )
+                )
+            )
         })
+    }
+
+    private func debugInfo(
+        selectedStop: NearbyStop?,
+        nearestSearchedStop: NearbyStop?,
+        didBusTimeReturnPredictionsForSelectedStop: Bool
+    ) -> SavedRouteArrivalDebugInfo {
+        SavedRouteArrivalDebugInfo(
+            selectedStopName: selectedStop?.stop.stopName,
+            selectedStopID: selectedStop?.stop.stopID,
+            selectedStopDistanceInMeters: selectedStop?.distanceInMeters,
+            nearestSearchedStopName: nearestSearchedStop?.stop.stopName,
+            nearestSearchedStopID: nearestSearchedStop?.stop.stopID,
+            nearestSearchedStopDistanceInMeters: nearestSearchedStop?.distanceInMeters,
+            didBusTimeReturnPredictionsForSelectedStop: didBusTimeReturnPredictionsForSelectedStop
+        )
     }
 
     private func minutesUntilArrival(_ arrivalDate: Date, now: Date) -> Int {

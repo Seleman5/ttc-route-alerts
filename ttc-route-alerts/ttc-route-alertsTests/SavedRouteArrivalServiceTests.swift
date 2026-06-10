@@ -93,6 +93,41 @@ final class SavedRouteArrivalServiceTests: XCTestCase {
         XCTAssertEqual(states[route.id], .arrival(minutes: 7))
     }
 
+    func testArrivalResultIncludesSelectedStopDebugInfo() async {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let route = busRoute(number: "100")
+        let service = SavedRouteArrivalService(
+            fetchPredictions: { stopIDs, _ in
+                if stopIDs.contains("nearest-stop") {
+                    return [
+                        self.prediction(routeTag: "32", arrivalDate: Date(timeIntervalSince1970: 1_800_000_120))
+                    ]
+                }
+
+                return [
+                    self.prediction(routeTag: "100", arrivalDate: Date(timeIntervalSince1970: 1_800_000_420))
+                ]
+            },
+            nearbyStopLimit: 2
+        )
+
+        let results = await service.nextArrivalResults(
+            for: [route],
+            currentLocation: userLocation,
+            stops: [
+                stop(id: "nearest-stop", latitudeOffset: 0.001),
+                stop(id: "matching-stop", latitudeOffset: 0.002)
+            ],
+            now: now
+        )
+
+        let debugInfo = results[route.id]?.debugInfo
+        XCTAssertEqual(results[route.id]?.state, .arrival(minutes: 7))
+        XCTAssertEqual(debugInfo?.selectedStopID, "matching-stop")
+        XCTAssertEqual(debugInfo?.nearestSearchedStopID, "nearest-stop")
+        XCTAssertEqual(debugInfo?.didBusTimeReturnPredictionsForSelectedStop, true)
+    }
+
     func testLimitsNearbyStopWork() async {
         let route = busRoute(number: "100")
         var fetchedStopIDs: Set<String> = []
@@ -115,6 +150,66 @@ final class SavedRouteArrivalServiceTests: XCTestCase {
         )
 
         XCTAssertEqual(fetchedStopIDs, ["first", "second"])
+    }
+
+    func testDefaultSearchWindowFindsMatchingPredictionAtTwelfthNearbyStop() async {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let route = busRoute(number: "32")
+        let fetchRecorder = SavedRoutePredictionFetchRecorder()
+        let service = SavedRouteArrivalService(
+            fetchPredictions: { stopIDs, _ in
+                await fetchRecorder.record(stopIDs[0])
+
+                if stopIDs.contains("stop-12") {
+                    return [
+                        self.prediction(routeTag: "32", arrivalDate: Date(timeIntervalSince1970: 1_800_000_300))
+                    ]
+                }
+
+                return []
+            }
+        )
+
+        let stops = (1...13).map { index in
+            stop(id: "stop-\(index)", latitudeOffset: Double(index) * 0.0001)
+        }
+
+        let results = await service.nextArrivalResults(
+            for: [route],
+            currentLocation: userLocation,
+            stops: stops,
+            now: now
+        )
+
+        let fetchedStopIDs = await fetchRecorder.stopIDs
+
+        XCTAssertEqual(results[route.id]?.state, .arrival(minutes: 5))
+        XCTAssertEqual(results[route.id]?.debugInfo.selectedStopID, "stop-12")
+        XCTAssertEqual(fetchedStopIDs.count, 12)
+        XCTAssertFalse(fetchedStopIDs.contains("stop-13"))
+    }
+
+    func testDefaultRadiusCapSkipsStopsBeyondEightHundredMeters() async {
+        let route = busRoute(number: "32")
+        var predictionFetchCount = 0
+        let service = SavedRouteArrivalService(
+            fetchPredictions: { _, _ in
+                predictionFetchCount += 1
+                return [
+                    self.prediction(routeTag: "32", arrivalDate: Date(timeIntervalSince1970: 1_800_000_300))
+                ]
+            }
+        )
+
+        let states = await service.nextArrivalStates(
+            for: [route],
+            currentLocation: userLocation,
+            stops: [stop(id: "far-stop", latitudeOffset: 0.008)],
+            now: Date(timeIntervalSince1970: 1_800_000_000)
+        )
+
+        XCTAssertEqual(states[route.id], .unavailable)
+        XCTAssertEqual(predictionFetchCount, 0)
     }
 
     func testTimeoutReturnsArrivalUnavailable() async {
@@ -203,5 +298,17 @@ final class SavedRouteArrivalServiceTests: XCTestCase {
             seconds: nil,
             minutes: nil
         )
+    }
+}
+
+private actor SavedRoutePredictionFetchRecorder {
+    private var recordedStopIDs: Set<String> = []
+
+    var stopIDs: Set<String> {
+        recordedStopIDs
+    }
+
+    func record(_ stopID: String) {
+        recordedStopIDs.insert(stopID)
     }
 }

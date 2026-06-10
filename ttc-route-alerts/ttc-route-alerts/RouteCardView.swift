@@ -9,6 +9,7 @@ struct RouteCardView: View {
     let route: TTCAlertRoute
     let severity: AlertSeverity
     var arrivalState: SavedRouteArrivalState?
+    var arrivalDebugInfo: SavedRouteArrivalDebugInfo?
 
     var body: some View {
         let accentColor = AppDesign.routeAccentColor(for: route.routeType)
@@ -36,6 +37,12 @@ struct RouteCardView: View {
                 if let arrivalState {
                     arrivalSummaryView(for: arrivalState)
                 }
+
+                #if DEBUG
+                if let arrivalDebugInfo {
+                    arrivalDebugView(for: arrivalDebugInfo)
+                }
+                #endif
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .layoutPriority(1)
@@ -74,6 +81,25 @@ struct RouteCardView: View {
         .accessibilityLabel(arrivalState.accessibilityText)
     }
 
+    #if DEBUG
+    private func arrivalDebugView(for debugInfo: SavedRouteArrivalDebugInfo) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("DEBUG arrival preview")
+                .font(.caption2.weight(.bold))
+
+            Text(debugInfo.selectedStopText)
+                .font(.caption2)
+
+            Text(debugInfo.busTimePredictionText)
+                .font(.caption2)
+        }
+        .foregroundStyle(.secondary)
+        .lineLimit(2)
+        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityHidden(true)
+    }
+    #endif
+
     private var accessibilityLabel: String {
         if let arrivalState {
             return "\(route.displayName), \(severity.rawValue), \(arrivalState.accessibilityText)"
@@ -102,3 +128,36 @@ struct RouteCardView: View {
         }
     }
 }
+
+#if DEBUG
+private extension SavedRouteArrivalDebugInfo {
+    var selectedStopText: String {
+        if let selectedStopName,
+           let selectedStopID,
+           let selectedStopDistanceInMeters {
+            return "Selected stop: \(selectedStopName) (\(selectedStopID)) - \(Self.formattedDistance(selectedStopDistanceInMeters))"
+        }
+
+        if let nearestSearchedStopName,
+           let nearestSearchedStopID,
+           let nearestSearchedStopDistanceInMeters {
+            return "Selected stop: none; nearest searched: \(nearestSearchedStopName) (\(nearestSearchedStopID)) - \(Self.formattedDistance(nearestSearchedStopDistanceInMeters))"
+        }
+
+        return "Selected stop: none"
+    }
+
+    var busTimePredictionText: String {
+        let returnedPredictions = didBusTimeReturnPredictionsForSelectedStop ? "yes" : "no"
+        return "BusTime returned predictions: \(returnedPredictions)"
+    }
+
+    static func formattedDistance(_ meters: Double) -> String {
+        if meters >= 1_000 {
+            return String(format: "%.1f km", meters / 1_000)
+        }
+
+        return "\(Int(meters.rounded())) m"
+    }
+}
+#endif

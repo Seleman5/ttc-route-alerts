@@ -39,10 +39,15 @@ struct ContentView: View {
     @State private var routeAlertMatches: [UUID: [TTCAlert]] = [:]
     @State private var routeSeverities: [UUID: AlertSeverity] = [:]
     @State private var routeArrivalStates: [UUID: SavedRouteArrivalState] = [:]
+    @State private var routeArrivalDebugInfo: [UUID: SavedRouteArrivalDebugInfo] = [:]
     @State private var routeArrivalCache: [UUID: SavedRouteArrivalCacheEntry] = [:]
     @State private var autoRefreshTask: Task<Void, Never>?
     @State private var routeArrivalTask: Task<Void, Never>?
+    #if DEBUG
+    @ScaledMetric private var routeRowHeight = 174
+    #else
     @ScaledMetric private var routeRowHeight = 138
+    #endif
 
     static let savedRoutesKey = "savedRoutes"
     static let cachedAlertsKey = "cachedTTCAlerts"
@@ -134,6 +139,7 @@ struct ContentView: View {
             } else {
                 routeArrivalTask?.cancel()
                 routeArrivalStates = [:]
+                routeArrivalDebugInfo = [:]
                 routeArrivalCache = [:]
             }
         }
@@ -352,7 +358,8 @@ struct ContentView: View {
                             RouteCardView(
                                 route: route,
                                 severity: routeSeverity(for: route),
-                                arrivalState: routeArrivalState(for: route)
+                                arrivalState: routeArrivalState(for: route),
+                                arrivalDebugInfo: routeArrivalDebugInfo(for: route)
                             )
                         }
                         .buttonStyle(.plain)
@@ -662,6 +669,19 @@ struct ContentView: View {
         return .unavailable
     }
 
+    func routeArrivalDebugInfo(for route: TTCAlertRoute) -> SavedRouteArrivalDebugInfo? {
+        #if DEBUG
+        guard savedRouteArrivalPreviewEnabled,
+              supportsSavedRouteLiveArrival(route) else {
+            return nil
+        }
+
+        return routeArrivalDebugInfo[route.id]
+        #else
+        return nil
+        #endif
+    }
+
     func requestSavedRouteLocationIfNeeded() {
         guard savedRouteArrivalPreviewEnabled,
               selectedMainScreen == .alerts,
@@ -676,6 +696,7 @@ struct ContentView: View {
         guard savedRouteArrivalPreviewEnabled else {
             routeArrivalTask?.cancel()
             routeArrivalStates = [:]
+            routeArrivalDebugInfo = [:]
             routeArrivalCache = [:]
             return
         }
@@ -684,6 +705,9 @@ struct ContentView: View {
         let eligibleRouteIDs = Set(eligibleRoutes.map(\.id))
 
         routeArrivalStates = routeArrivalStates.filter { routeID, _ in
+            eligibleRouteIDs.contains(routeID)
+        }
+        routeArrivalDebugInfo = routeArrivalDebugInfo.filter { routeID, _ in
             eligibleRouteIDs.contains(routeID)
         }
         routeArrivalCache = routeArrivalCache.filter { routeID, _ in
@@ -715,6 +739,7 @@ struct ContentView: View {
                 routeArrivalStates[route.id] = cachedArrival.state
             } else {
                 routeArrivalStates[route.id] = .loading
+                routeArrivalDebugInfo[route.id] = nil
                 routesToLoad.append(route)
             }
         }
@@ -729,7 +754,7 @@ struct ContentView: View {
         let arrivalService = savedRouteArrivalService
 
         routeArrivalTask = Task {
-            let arrivalStates = await arrivalService.nextArrivalStates(
+            let arrivalResults = await arrivalService.nextArrivalResults(
                 for: routesToLoad,
                 currentLocation: currentLocation,
                 stops: stops,
@@ -742,8 +767,10 @@ struct ContentView: View {
 
             await MainActor.run {
                 for route in routesToLoad {
-                    let arrivalState = arrivalStates[route.id] ?? .unavailable
+                    let arrivalResult = arrivalResults[route.id]
+                    let arrivalState = arrivalResult?.state ?? .unavailable
                     routeArrivalStates[route.id] = arrivalState
+                    routeArrivalDebugInfo[route.id] = arrivalResult?.debugInfo
                     routeArrivalCache[route.id] = SavedRouteArrivalCacheEntry(
                         state: arrivalState,
                         updatedAt: Date()
