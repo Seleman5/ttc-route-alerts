@@ -151,6 +151,7 @@ struct SettingsView: View {
             SettingsInfoRow(title: "App", value: "TTC Route Alerts")
             SettingsInfoRow(title: "Description", value: "Track saved TTC routes and see matching service alerts.")
             SettingsInfoRow(title: "Data Source", value: "TTC GTFS-Realtime alerts")
+            SettingsInfoRow(title: "Privacy Policy", value: "Link to the hosted privacy policy URL before App Store submission.")
 
             if let appVersionText {
                 SettingsInfoRow(title: "Version", value: appVersionText)

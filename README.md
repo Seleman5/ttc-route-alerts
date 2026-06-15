@@ -41,6 +41,8 @@ TTC Route Alerts is a SwiftUI app for saving regular TTC routes, checking route-
 - TTC alert, schedule, stop, and arrival data comes from public TTC feeds.
 - No account is required.
 
+Read the full [Privacy Policy](PRIVACY.md).
+
 ## App Store Readiness
 
 - Real-time TTC arrival predictions
