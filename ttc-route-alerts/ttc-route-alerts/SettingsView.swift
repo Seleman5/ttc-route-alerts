@@ -12,6 +12,8 @@ struct SettingsView: View {
     @State private var notificationMessage: String?
     @State private var isRevertingNotificationsToggle = false
 
+    private let privacyPolicyURL = URL(string: "https://seleman5.github.io/ttc-route-alerts/privacy.html")!
+
     let ttcRed: Color
     let appBackground: Color
 
@@ -152,7 +154,7 @@ struct SettingsView: View {
             SettingsInfoRow(title: "Description", value: "Track saved TTC routes and see matching service alerts.")
             SettingsInfoRow(title: "Data Source", value: "TTC GTFS-Realtime alerts")
             SettingsInfoRow(title: "Disclaimer", value: "Independent app. Not affiliated with, endorsed by, sponsored by, or operated by the TTC. Public transit data may not always be accurate or available.")
-            SettingsInfoRow(title: "Privacy Policy", value: "Link to the hosted privacy policy URL before App Store submission.")
+            SettingsLinkRow(title: "Privacy Policy", value: "Open hosted privacy policy", url: privacyPolicyURL)
 
             if let appVersionText {
                 SettingsInfoRow(title: "Version", value: appVersionText)
@@ -242,6 +244,42 @@ struct SettingsInfoRow: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+struct SettingsLinkRow: View {
+    let title: String
+    let value: String
+    let url: URL
+
+    var body: some View {
+        Link(destination: url) {
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.secondary)
+
+                    Text(value)
+                        .font(.subheadline)
+                        .foregroundStyle(.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .layoutPriority(1)
+
+                Spacer(minLength: 8)
+
+                Image(systemName: "arrow.up.right.square")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Opens in Safari or the default browser.")
     }
 }
 
