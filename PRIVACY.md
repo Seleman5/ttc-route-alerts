@@ -4,7 +4,7 @@ Last updated: 6/15/2026
 
 ## TTC Route Alerts
 
-TTC Route Alerts is a transit utility app that helps users save TTC routes, view route alerts, find nearby TTC stops, and check live arrival predictions.
+TTC Route Alerts is an independent transit utility app that helps users save TTC routes, view route alerts, find nearby TTC stops, and check live arrival predictions.
 
 ## Data We Store
 
@@ -73,4 +73,4 @@ selemanshinwarie5@icloud.com
 
 ## Disclaimer
 
-TTC Route Alerts is not affiliated with, endorsed by, or operated by the Toronto Transit Commission. TTC data is provided through public TTC data services.
+TTC Route Alerts is an independent transit utility app. It is not affiliated with, endorsed by, sponsored by, or operated by the Toronto Transit Commission. TTC route, alert, stop, and arrival information is provided through public transit data services and may not always be accurate or available.

@@ -1,6 +1,10 @@
 # TTC Route Alerts
 
-TTC Route Alerts is a SwiftUI app for saving regular TTC routes, checking route-specific service alerts, and viewing arrival information for nearby or saved stops. It stores user preferences locally, uses public TTC feeds, and keeps the interface focused on the routes riders actually use.
+TTC Route Alerts is an independent SwiftUI transit utility app for saving regular TTC routes, checking route-specific service alerts, and viewing arrival information for nearby or saved stops. It stores user preferences locally, uses public TTC feeds, and keeps the interface focused on the routes riders actually use.
+
+## Disclaimer
+
+TTC Route Alerts is an independent transit utility app. It is not affiliated with, endorsed by, sponsored by, or operated by the Toronto Transit Commission. TTC route, alert, stop, and arrival information is provided through public transit data services and may not always be accurate or available.
 
 ## Features
 
