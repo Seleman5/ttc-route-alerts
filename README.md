@@ -45,7 +45,7 @@ TTC Route Alerts is an independent transit utility app. It is not affiliated wit
 - TTC alert, schedule, stop, and arrival data comes from public TTC feeds.
 - No account is required.
 
-Read the full [Privacy Policy](PRIVACY.md).
+Read the full [Privacy Policy](https://Seleman5.github.io/ttc-route-alerts/privacy.html).
 
 ## App Store Readiness
 
