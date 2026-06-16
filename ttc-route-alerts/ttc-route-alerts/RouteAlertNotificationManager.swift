@@ -33,7 +33,9 @@ enum RouteAlertNotificationManager {
             do {
                 return try await center.requestAuthorization(options: [.alert, .sound, .badge])
             } catch {
+                #if DEBUG
                 print("Could not request notification permission: \(error.localizedDescription)")
+                #endif
                 return false
             }
         @unknown default:
@@ -60,7 +62,9 @@ enum RouteAlertNotificationManager {
             try await UNUserNotificationCenter.current().add(request)
             return true
         } catch {
+            #if DEBUG
             print("Could not schedule route alert notification: \(error.localizedDescription)")
+            #endif
             return false
         }
     }

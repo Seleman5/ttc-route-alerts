@@ -37,7 +37,9 @@ enum BackgroundAlertRefreshManager {
         do {
             try BGTaskScheduler.shared.submit(request)
         } catch {
+            #if DEBUG
             print("Could not schedule background refresh: \(error.localizedDescription)")
+            #endif
         }
     }
 
@@ -70,7 +72,9 @@ enum BackgroundAlertRefreshManager {
 
             return true
         } catch {
+            #if DEBUG
             print("Could not refresh TTC alerts in the background: \(error.localizedDescription)")
+            #endif
             return false
         }
     }
@@ -100,7 +104,9 @@ enum BackgroundAlertRefreshManager {
             let encodedAlerts = try JSONEncoder().encode(alerts)
             UserDefaults.standard.set(encodedAlerts, forKey: ContentView.cachedAlertsKey)
         } catch {
+            #if DEBUG
             print("Could not save cached alerts from background refresh")
+            #endif
         }
     }
 

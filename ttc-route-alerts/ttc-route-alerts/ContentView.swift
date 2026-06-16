@@ -586,7 +586,9 @@ struct ContentView: View {
             withAnimation(AppDesign.subtleAnimation) {
                 refreshErrorMessage = cachedAlertsMessage
             }
+            #if DEBUG
             print("Could not refresh TTC alerts: \(error.localizedDescription)")
+            #endif
         }
 
         withAnimation(AppDesign.subtleAnimation) {
@@ -836,7 +838,9 @@ struct ContentView: View {
             let encodedRoutes = try JSONEncoder().encode(savedRoutes)
             UserDefaults.standard.set(encodedRoutes, forKey: ContentView.savedRoutesKey)
         } catch {
+            #if DEBUG
             print("Could not save routes")
+            #endif
         }
     }
 
@@ -845,7 +849,9 @@ struct ContentView: View {
             let encodedAlerts = try JSONEncoder().encode(ttcAlerts)
             UserDefaults.standard.set(encodedAlerts, forKey: ContentView.cachedAlertsKey)
         } catch {
+            #if DEBUG
             print("Could not save cached alerts")
+            #endif
         }
     }
 

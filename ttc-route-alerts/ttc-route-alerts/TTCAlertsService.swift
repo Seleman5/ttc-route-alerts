@@ -20,17 +20,19 @@ struct TTCAlertsService {
         let (data, response) = try await URLSession.shared.data(from: alertsFeedURL)
 
         if let httpResponse = response as? HTTPURLResponse {
-            print("TTC alerts feed status: \(httpResponse.statusCode)")
-
             guard (200...299).contains(httpResponse.statusCode) else {
+                #if DEBUG
+                print("TTC alerts feed status: \(httpResponse.statusCode)")
+                #endif
                 throw URLError(.badServerResponse)
             }
         } else {
+            #if DEBUG
             print("TTC alerts feed response was not an HTTP response")
+            #endif
             throw URLError(.badServerResponse)
         }
 
-        print("TTC alerts feed data size: \(data.count) bytes")
         return try decodedAlerts(from: data)
     }
 
@@ -39,19 +41,11 @@ struct TTCAlertsService {
             let feed = try TransitRealtime_FeedMessage(serializedBytes: data)
             let alerts = readableAlerts(from: feed)
 
-            print("Decoded TTC alerts: \(alerts.count)")
-
-            if alerts.isEmpty {
-                print("No readable TTC alert text found in the feed.")
-            } else {
-                for alert in alerts {
-                    print("TTC alert: \(alert.text)")
-                }
-            }
-
             return alerts
         } catch {
+            #if DEBUG
             print("Could not decode TTC alerts feed: \(error.localizedDescription)")
+            #endif
             throw error
         }
     }
