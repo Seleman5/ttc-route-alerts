@@ -80,7 +80,9 @@ enum BackgroundAlertRefreshManager {
     }
 
     private static func processAlertNotifications(_ alerts: [TTCAlert], shouldSendNotifications: Bool) async {
-        let savedRoutes = ContentView.loadRoutes()
+        let savedRoutes = await MainActor.run {
+            ContentView.loadRoutes()
+        }
 
         for route in savedRoutes {
             let matchingAlerts = RouteAlertStatus.matchingAlerts(for: route, in: alerts)
